@@ -1,21 +1,143 @@
-```txt
-npm install
-npm run dev
+# 楽天ROOM売れ筋リサーチャー
+
+## プロジェクト概要
+- **名前**: 楽天ROOM売れ筋リサーチャー
+- **目的**: 楽天ROOMで紹介しやすい売れ筋商品をリサーチし、魅力的な紹介文を自動生成するアプリ
+- **主な機能**:
+  - カテゴリ別の売れ筋商品検索（掃除グッズ、アウトドア、DIY、自動車関連）
+  - おまかせランダム10選機能
+  - 奇抜なフックを持つAI生成の紹介文（150〜250文字）
+  - ワンクリックで紹介文をコピー
+  - 商品情報の詳細表示（価格、レビュー数、評価）
+
+## URLs
+- **開発環境**: https://3000-ibjgleuqvoenfunon87ff-2e1b9533.sandbox.novita.ai
+- **GitHub**: （未設定）
+- **本番環境**: （未デプロイ）
+
+## 完成済みの機能
+1. ✅ カテゴリ別商品検索（掃除グッズ、アウトドア、DIY、自動車関連）
+2. ✅ ランダム10商品取得機能
+3. ✅ 楽天ROOM用紹介文の自動生成
+   - 奇抜なフック（意外性のある1行目）
+   - 口コミ・評判ベースの内容
+   - 絵文字3つ自動挿入
+   - 150〜250文字の適切な長さ
+4. ✅ 商品情報の詳細表示
+   - 商品名、価格、レビュー数、評価
+   - 売れている理由の説明
+5. ✅ ワンクリックコピー機能
+   - 個別商品の紹介文コピー
+   - 全商品一括コピー
+6. ✅ レスポンシブデザイン（TailwindCSS使用）
+
+## 機能エントリー一覧
+
+### API エンドポイント
+1. **GET `/api/products/:category`**
+   - カテゴリ別の商品を取得
+   - パラメータ: `category` (cleaning, outdoor, diy, car)
+   - レスポンス: 商品配列（商品名、価格、URL、レビュー数、評価、紹介文、売れている理由）
+
+2. **GET `/api/products/random/10`**
+   - ランダムに10商品を取得
+   - パラメータ: なし
+   - レスポンス: 商品配列（商品名、価格、URL、レビュー数、評価、紹介文、売れている理由）
+
+### フロントエンド
+- **GET `/`**: メインページ（カテゴリ選択、商品リスト表示、コピー機能）
+
+## データ構造
+- **商品データモデル**:
+  ```typescript
+  {
+    name: string          // 商品名
+    price: number         // 価格
+    url: string          // 楽天市場の商品ページURL
+    imageUrl: string     // 商品画像URL
+    reviewCount: number  // レビュー数
+    rating: number       // 評価（1〜5）
+    category: string     // カテゴリ
+    description: string  // 楽天ROOM用紹介文（自動生成）
+    reason: string       // 売れている理由
+  }
+  ```
+
+- **ストレージサービス**: 
+  - 現在はインメモリで動作（サンプルデータ）
+  - 将来的には楽天市場APIまたはスクレイピングで実データ取得予定
+
+## 使い方
+1. アプリにアクセス
+2. カテゴリボタンをクリック（掃除グッズ、アウトドア、DIY、自動車関連、おまかせ10選）
+3. 商品リストが表示される
+4. 各商品の紹介文を確認
+5. 「この紹介文をコピー」ボタンで個別コピー、または「全て一括コピー」で全商品コピー
+6. 楽天ROOMに投稿！
+
+## 未実装の機能
+1. ❌ 楽天市場APIとの連携（APIキー取得後に実装予定）
+2. ❌ Webスクレイピングによる実データ取得
+3. ❌ 日次の商品データ更新機能
+4. ❌ お気に入り商品の保存機能
+5. ❌ 紹介文のカスタマイズ機能
+6. ❌ 季節商品の自動フィルタリング
+7. ❌ 商品画像の自動取得と表示
+
+## 推奨される次のステップ
+1. **楽天市場APIキーを取得して実データ連携**
+   - 楽天ウェブサービスに登録
+   - APIキーを取得
+   - 商品検索APIを実装
+
+2. **Cloudflare D1でお気に入り商品を保存**
+   - データベース設計
+   - お気に入り追加・削除機能
+
+3. **紹介文のバリエーション追加**
+   - より多様なフックパターン
+   - カテゴリ別の専用テンプレート
+
+4. **本番環境へデプロイ**
+   - Cloudflare Pagesへデプロイ
+   - カスタムドメイン設定
+
+5. **GitHubリポジトリ作成**
+   - コードをGitHubにプッシュ
+   - バージョン管理の開始
+
+## デプロイ
+- **プラットフォーム**: Cloudflare Pages
+- **ステータス**: 🔄 開発中（ローカル環境で動作確認済み）
+- **技術スタック**: Hono + TypeScript + TailwindCSS + Cloudflare Workers
+- **最終更新**: 2026-02-10
+
+## 開発コマンド
+```bash
+# ビルド
+npm run build
+
+# ポートクリーンアップ
+npm run clean-port
+
+# PM2で起動
+pm2 start ecosystem.config.cjs
+
+# PM2ログ確認
+pm2 logs rakuten-room-researcher --nostream
+
+# PM2再起動
+pm2 restart rakuten-room-researcher
+
+# テスト
+npm test
 ```
 
-```txt
-npm run deploy
-```
+## 注意事項
+- 現在はデモデータで動作しています
+- 楽天市場APIキー取得後、実データに切り替え可能
+- 紹介文は毎回ランダムに生成されるため、同じ商品でも異なる紹介文が生成されます
 
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
+---
 
-```txt
-npm run cf-typegen
-```
-
-Pass the `CloudflareBindings` as generics when instantiation `Hono`:
-
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
+**あいこさんの楽天ROOM収益化を全力サポート！✨**
