@@ -13,6 +13,18 @@ const app = new Hono<{ Bindings: Bindings }>()
 app.use('/api/*', cors())
 app.use('/static/*', serveStatic({ root: './public' }))
 
+// API: 楽天APIキーを返す（フロントエンドから直接楽天APIを呼び出すため）
+app.get('/api/config', (c) => {
+  const { RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID } = c.env || {}
+  
+  return c.json({
+    rakutenAppId: RAKUTEN_APP_ID || '',
+    rakutenAccessKey: RAKUTEN_ACCESS_KEY || '',
+    rakutenAffiliateId: RAKUTEN_AFFILIATE_ID || '',
+    hasApiKeys: !!(RAKUTEN_APP_ID && RAKUTEN_ACCESS_KEY && RAKUTEN_AFFILIATE_ID)
+  })
+})
+
 // 商品データの型定義
 interface Product {
   name: string
@@ -613,6 +625,7 @@ app.get('/', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/rakuten-api.js"></script>
         <script>
             let currentProducts = [];
             const HISTORY_KEY = 'rakuten_room_history';
