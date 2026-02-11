@@ -188,12 +188,16 @@ async function searchRakutenProducts(
     })
 
     // 新しいエンドポイント（openapi.rakuten.co.jp）を使用
+    // Cloudflare Workersでは、fetchのreferrerオプションでRefererを指定
     const response = await fetch(
       `https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601?format=json&${params.toString()}`,
       {
         headers: {
-          'Referer': 'https://rakuten-room-researcher.pages.dev/'
-        }
+          'Referer': 'https://rakuten-room-researcher.pages.dev/',
+          'User-Agent': 'Mozilla/5.0 (compatible; RakutenRoomResearcher/1.0)'
+        },
+        referrer: 'https://rakuten-room-researcher.pages.dev/',  // Fetch API標準のreferrerオプション
+        referrerPolicy: 'no-referrer-when-downgrade'
       }
     )
 
