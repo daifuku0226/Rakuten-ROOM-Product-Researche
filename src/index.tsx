@@ -39,26 +39,26 @@ interface RakutenItem {
   }
 }
 
-// 紹介文生成用のフック例
-const hooks = [
-  "え、これだけで解決？",
-  "知らないと損する！",
-  "みんなが黙って買ってる",
-  "SNSで話題沸騰中",
-  "プロも愛用してる",
-  "コスパ最強説",
-  "これは革命的",
-  "もう手放せない",
-  "ズボラさんの救世主",
-  "買わない理由が見つからない",
-  "バズってる理由がわかった",
-  "リピーター続出の秘密",
-  "早い者勝ちかも",
-  "今すぐチェック必須",
-  "これ使わないの損してる"
+// キャッチーなフック（1文目用）
+const catchyHooks = [
+  "他人への愛情よりも自分へのご褒美が優先だよね！",
+  "いつまでそれで勝負するつもり？早く買い換えて暖かさを味方にしようよ！",
+  "まだ我慢してるの？人生は一度きりだよ！",
+  "その悩み、この商品で一発解決できるかも！",
+  "知らないと損！みんなが黙って買ってる理由がこれ！",
+  "え、まだ使ってないの？人生損してるかも！",
+  "今年こそ変わりたいなら、これが答えかも！",
+  "ズボラさんでも続けられる秘密、教えます！",
+  "コスパ最強すぎて笑えてくる！",
+  "一度使ったら戻れない、そんな魔法のアイテム！",
+  "SNSで話題沸騰！売り切れる前にゲットしよ！",
+  "こんなに便利なのに、なんで今まで知らなかったの？",
+  "プロも愛用してる理由、わかっちゃった！",
+  "もう我慢しなくていいんだよ、自分を甘やかそう！",
+  "これがあれば毎日がもっと楽しくなる予感！"
 ]
 
-const emojis = ["✨", "💡", "🎯", "👏", "🔥", "💪", "🌟", "❤️", "😊", "🎉", "⭐", "👍", "💖", "🙌", "😍"]
+const emojis = ["✨", "💡", "🎯", "👏", "🔥", "💪", "🌟", "❤️", "😊", "🎉", "⭐", "👍", "💖", "🙌", "😍", "🍫", "👖", "🎁", "🔥"]
 
 // カテゴリ別の検索キーワード
 const categoryKeywords: Record<string, string[]> = {
@@ -80,31 +80,42 @@ const categoryKeywords: Record<string, string[]> = {
   ]
 }
 
-// 紹介文生成関数
+// 紹介文生成関数（キャッチーで詳しい説明）
 function generateDescription(product: Product): string {
-  const hook = hooks[Math.floor(Math.random() * hooks.length)]
+  const hook = catchyHooks[Math.floor(Math.random() * catchyHooks.length)]
   const selectedEmojis = [...Array(3)].map(() => 
     emojis[Math.floor(Math.random() * emojis.length)]
-  )
+  ).join('')
   
-  const reasons = [
-    `口コミ${product.reviewCount}件超えの人気商品`,
-    `評価${product.rating}の高評価`,
-    `この価格帯では考えられないコスパ`,
-    `リピーター続出の実力派`,
-    `SNSで話題の注目アイテム`,
-    `楽天ランキング上位の実績`,
-    `購入者満足度が高い`
+  // 商品の魅力ポイント
+  const appealPoints = [
+    `${product.reviewCount}件以上のレビューで評価${product.rating}を獲得している実力派`,
+    `楽天ランキングで常に上位をキープする人気商品`,
+    `リピーター続出！一度使ったら手放せなくなる魅力`,
+    `SNSで話題沸騰中！みんなが黙って買ってる理由がわかる`,
+    `プロも愛用する本格派！初心者から上級者まで満足できる品質`
   ]
   
-  const reason = reasons[Math.floor(Math.random() * reasons.length)]
+  const appeal = appealPoints[Math.floor(Math.random() * appealPoints.length)]
   
+  // 口コミ例
+  const reviews = [
+    `「安定の美味しさ」「コスパが良すぎる」と口コミでも話題沸騰中`,
+    `「リピ確定」「もう手放せない」と絶賛されています`,
+    `「買ってよかった」「期待以上だった」という声が続出`,
+    `「もっと早く買えばよかった」「コスパ最強」と評判`,
+    `「これは買い」「間違いない商品」と口コミで高評価`
+  ]
+  
+  const review = reviews[Math.floor(Math.random() * reviews.length)]
+  
+  // テンプレート（例文のような構成）
   const templates = [
-    `${hook}${selectedEmojis[0]} ${product.name}が今めちゃくちゃ売れてます。${reason}で、実際に使った人からは「もっと早く買えばよかった」の声が続出。${product.category}選びで迷ってる方は、この評判を見逃さないで${selectedEmojis[1]} 価格も${product.price.toLocaleString()}円とお手頃で、コスパ最強との声多数${selectedEmojis[2]}`,
+    `${hook} ${product.name}はいかがですか？${selectedEmojis} ${appeal}で、実際に使った人からの満足度も抜群。${review}。売り切れる前にゲットしておきたい逸品です！`,
     
-    `${hook}${selectedEmojis[0]} 楽天で${product.reviewCount}件以上のレビューを集める${product.name}。人気の理由は、${reason}という点。「買ってよかった」「リピ決定」という口コミが目立ちます${selectedEmojis[1]} ${product.price.toLocaleString()}円でこのクオリティは正直お得すぎる${selectedEmojis[2]}`,
+    `${hook} そんなあなたにおすすめなのが「${product.name}」！${selectedEmojis} ${appeal}。${review}。${product.price.toLocaleString()}円でこのクオリティなら、間違いなく買いです！`,
     
-    `${hook}${selectedEmojis[0]} ${product.category}で今一番注目されてる${product.name}。${reason}で、購入者の満足度がすごく高いんです。「期待以上だった」「コスパ良すぎ」って評判ばかり${selectedEmojis[1]} ${product.price.toLocaleString()}円でこの性能なら納得の人気ぶり${selectedEmojis[2]}`
+    `${hook} だからこそ「${product.name}」を試してほしい！${selectedEmojis} ${appeal}という実績が証明しています。${review}。楽天で不動の人気を誇るのも納得の品質です！`
   ]
   
   return templates[Math.floor(Math.random() * templates.length)]
@@ -306,6 +317,47 @@ app.get('/api/products/:category', async (c) => {
   return c.json(productsWithDescriptions)
 })
 
+// API: カスタムキーワード検索（リクエスト欄用）
+app.get('/api/products/search/:keyword', async (c) => {
+  const keyword = decodeURIComponent(c.req.param('keyword'))
+  
+  // デモデータから10商品をランダムに選択（キーワード検索のフォールバック）
+  const allDemoProducts = Object.values(demoProducts).flat()
+  let selectedProducts = [...allDemoProducts]
+    .sort(() => 0.5 - Math.random())
+    .slice(0, 10)
+  
+  // 楽天APIを試行
+  const { RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID } = c.env || {}
+  
+  if (RAKUTEN_APP_ID && RAKUTEN_ACCESS_KEY && RAKUTEN_AFFILIATE_ID) {
+    try {
+      const products = await searchRakutenProducts(
+        keyword,
+        RAKUTEN_APP_ID,
+        RAKUTEN_ACCESS_KEY,
+        RAKUTEN_AFFILIATE_ID,
+        10
+      )
+      
+      if (products.length > 0) {
+        selectedProducts = products
+      }
+    } catch (error) {
+      console.error('楽天API呼び出しエラー:', error)
+      // デモデータにフォールバック
+    }
+  }
+
+  const productsWithDescriptions = selectedProducts.map(product => ({
+    ...product,
+    description: generateDescription(product),
+    reason: `「${keyword}」で検索した結果、${product.reviewCount}件以上のレビューで評価${product.rating}を獲得している人気商品です。`
+  }))
+  
+  return c.json(productsWithDescriptions)
+})
+
 // API: ランダムに10商品取得（デモデータ優先）
 app.get('/api/products/random/10', async (c) => {
   // デモデータから10商品をランダムに選択
@@ -414,6 +466,30 @@ app.get('/', (c) => {
                 </div>
             </div>
 
+            <!-- リクエスト欄（新機能） -->
+            <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-magic mr-2 text-purple-600"></i>
+                    カスタムリクエスト
+                </h2>
+                <p class="text-gray-600 mb-4 text-sm">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    例：「文房具 可愛い」「冬 あったか」「プレゼント 1000円」など
+                </p>
+                <div class="flex gap-3">
+                    <input type="text" 
+                           id="customKeyword" 
+                           placeholder="探したい商品のキーワードを入力..."
+                           class="flex-1 px-4 py-3 border-2 border-purple-300 rounded-lg focus:outline-none focus:border-purple-500"
+                           onkeypress="if(event.key==='Enter') searchCustom()">
+                    <button onclick="searchCustom()" 
+                            class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-3 rounded-lg hover:shadow-lg transition font-bold">
+                        <i class="fas fa-search mr-2"></i>
+                        検索
+                    </button>
+                </div>
+            </div>
+
             <!-- カテゴリ選択 -->
             <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
                 <h2 class="text-2xl font-bold text-gray-800 mb-6">
@@ -477,6 +553,33 @@ app.get('/', (c) => {
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
             let currentProducts = [];
+            const HISTORY_KEY = 'rakuten_room_history';
+
+            // 履歴を取得
+            function getHistory() {
+                const history = localStorage.getItem(HISTORY_KEY);
+                return history ? JSON.parse(history) : [];
+            }
+
+            // 履歴に追加
+            function addToHistory(productName) {
+                const history = getHistory();
+                if (!history.includes(productName)) {
+                    history.push(productName);
+                    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+                }
+            }
+
+            // 商品が既に紹介済みかチェック
+            function isAlreadyIntroduced(productName) {
+                return getHistory().includes(productName);
+            }
+
+            // 履歴をクリア（デバッグ用）
+            function clearHistory() {
+                localStorage.removeItem(HISTORY_KEY);
+                alert('✅ 履歴をクリアしました');
+            }
 
             async function searchProducts(category) {
                 const loading = document.getElementById('loading');
@@ -493,20 +596,74 @@ app.get('/', (c) => {
                         : \`/api/products/\${category}\`;
                     
                     const response = await axios.get(endpoint);
-                    currentProducts = response.data;
+                    
+                    // 未紹介の商品のみをフィルタリング
+                    const history = getHistory();
+                    currentProducts = response.data.filter(product => !history.includes(product.name));
 
                     loading.classList.add('hidden');
                     results.classList.remove('hidden');
 
                     if (currentProducts.length === 0) {
-                        productList.innerHTML = '<p class="text-gray-500 text-center py-8">商品が見つかりませんでした</p>';
+                        productList.innerHTML = '<p class="text-gray-500 text-center py-8">未紹介の商品が見つかりませんでした。<button onclick="clearHistory()" class="text-purple-600 underline ml-2">履歴をクリア</button></p>';
                         return;
                     }
+
+                    // 紹介済みとしてマーク
+                    currentProducts.forEach(product => addToHistory(product.name));
 
                     currentProducts.forEach((product, index) => {
                         const productCard = createProductCard(product, index);
                         productList.innerHTML += productCard;
                     });
+                } catch (error) {
+                    loading.classList.add('hidden');
+                    alert('エラーが発生しました: ' + error.message);
+                }
+            }
+
+            // カスタムキーワード検索
+            async function searchCustom() {
+                const keyword = document.getElementById('customKeyword').value.trim();
+                
+                if (!keyword) {
+                    alert('キーワードを入力してください');
+                    return;
+                }
+
+                const loading = document.getElementById('loading');
+                const results = document.getElementById('results');
+                const productList = document.getElementById('productList');
+
+                loading.classList.remove('hidden');
+                results.classList.add('hidden');
+                productList.innerHTML = '';
+
+                try {
+                    const response = await axios.get(\`/api/products/search/\${encodeURIComponent(keyword)}\`);
+                    
+                    // 未紹介の商品のみをフィルタリング
+                    const history = getHistory();
+                    currentProducts = response.data.filter(product => !history.includes(product.name));
+
+                    loading.classList.add('hidden');
+                    results.classList.remove('hidden');
+
+                    if (currentProducts.length === 0) {
+                        productList.innerHTML = '<p class="text-gray-500 text-center py-8">「' + keyword + '」で未紹介の商品が見つかりませんでした。<button onclick="clearHistory()" class="text-purple-600 underline ml-2">履歴をクリア</button></p>';
+                        return;
+                    }
+
+                    // 紹介済みとしてマーク
+                    currentProducts.forEach(product => addToHistory(product.name));
+
+                    currentProducts.forEach((product, index) => {
+                        const productCard = createProductCard(product, index);
+                        productList.innerHTML += productCard;
+                    });
+
+                    // 検索欄をクリア
+                    document.getElementById('customKeyword').value = '';
                 } catch (error) {
                     loading.classList.add('hidden');
                     alert('エラーが発生しました: ' + error.message);
