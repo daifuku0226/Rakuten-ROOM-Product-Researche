@@ -80,42 +80,69 @@ const categoryKeywords: Record<string, string[]> = {
   ]
 }
 
-// 紹介文生成関数（キャッチーで詳しい説明）
+// 商品別の具体的な特徴マッピング
+const productFeatures: Record<string, string[]> = {
+  "ボールペン": ["10色のパステルカラーでノートを可愛く彩れる", "書き心地なめらかで手が疲れない", "インクがかすれずスムーズに書ける"],
+  "付箋": ["動物デザインが可愛くて癒される", "粘着力がちょうどよく、剥がしやすい", "8種類あるから使い分けが楽しい"],
+  "マスキングテープ": ["24巻セットでデコレーションし放題", "手帳やノートを華やかに演出できる", "貼って剥がせるから失敗しても安心"],
+  "手帳": ["B6サイズで持ち運びやすい", "月間・週間ページが充実していて使いやすい", "可愛いデザインで毎日開くのが楽しみになる"],
+  "シャープペンシル": ["0.5mmで細かい文字も書きやすい", "握りやすいグリップで長時間使っても疲れない", "可愛いデザインでテンションが上がる"],
+  "裏起毛パンツ": ["ストレッチが効いて動きやすい", "裏は毛布みたいにもこもこで暖かい", "見た目はスッキリなのに防寒性抜群"],
+  "電気毛布": ["USB給電だからどこでも使える", "膝掛けサイズでオフィスでも便利", "3段階温度調節で自分好みの暖かさに"],
+  "ルームソックス": ["もこもこ素材で足元ぽかぽか", "滑り止め付きで安全", "洗濯機で丸洗いOKでお手入れ簡単"],
+  "カイロ": ["貼るタイプで服に固定できる", "8時間以上持続する暖かさ", "30個入りで冬中使える大容量"],
+  "激落ちくん": ["水だけで汚れが落ちる、洗剤不要のエコ掃除", "100個入りの大容量でコスパ最強", "キッチン、お風呂、窓ガラスなど万能に使える"],
+  "マイクロファイバー": ["20枚セットで使い分けできる", "吸水性抜群で拭き掃除が楽ちん", "洗って繰り返し使えて経済的"],
+  "ドライブレコーダー": ["前後カメラで死角なし、万が一の事故も安心", "フルHD画質でナンバーもくっきり録画", "駐車監視機能付きで当て逃げ対策も完璧"],
+  "折りたたみチェア": ["超軽量で持ち運びが楽々", "ワンタッチで設営・収納が簡単", "コンパクトに折りたためて車のトランクにもすっぽり"],
+  "キャンプテーブル": ["ワンタッチで設営完了、組み立て不要", "コンパクト収納で持ち運びに便利", "安定感抜群で揺れない"],
+  "LEDランタン": ["USB充電式で電池不要", "防水設計でアウトドアでも安心", "明るさ調整できて使い勝手抜群"],
+  "電動ドライバー": ["充電式でコードレス、どこでも使える", "トルク調整機能付きで木材もネジも楽々", "初心者でも簡単に使えるシンプル設計"],
+  "収納棚": ["組み立て簡単、工具不要", "5段あるから収納力抜群", "シンプルデザインでどんな部屋にも馴染む"],
+  "工具セット": ["100点セットで家庭の修理に十分", "収納ケース付きで整理しやすい", "初心者でも使いやすい基本工具が揃ってる"],
+  "車載掃除機": ["コードレスで車内掃除が楽々", "コンパクトで収納に困らない", "吸引力が強くて細かいゴミもしっかり吸う"],
+  "車載スマホホルダー": ["マグネット式でワンタッチ装着", "360度回転で角度調整自由", "振動に強くてスマホが落ちない"],
+  "入浴剤": ["10種類の香りが楽しめる", "ギフトボックス入りでプレゼントに最適", "保湿成分配合で肌がしっとり"],
+  "ハンドクリーム": ["3本セットで使い分けできる", "べたつかないのにしっとり潤う", "持ち運びやすいサイズでギフトにも◎"],
+  "紅茶": ["5種類のフレーバーが楽しめる", "ティーバッグで手軽に淹れられる", "ギフトボックス入りで見た目も華やか"],
+  "default": ["実際に使った人からの満足度が高い", "コスパが良くて長く使える", "初心者でも使いやすい設計"]
+}
+
+// 紹介文生成関数（商品の具体的な魅力を含む）
 function generateDescription(product: Product): string {
   const hook = catchyHooks[Math.floor(Math.random() * catchyHooks.length)]
   const selectedEmojis = [...Array(3)].map(() => 
     emojis[Math.floor(Math.random() * emojis.length)]
   ).join('')
   
-  // 商品の魅力ポイント
-  const appealPoints = [
-    `${product.reviewCount}件以上のレビューで評価${product.rating}を獲得している実力派`,
-    `楽天ランキングで常に上位をキープする人気商品`,
-    `リピーター続出！一度使ったら手放せなくなる魅力`,
-    `SNSで話題沸騰中！みんなが黙って買ってる理由がわかる`,
-    `プロも愛用する本格派！初心者から上級者まで満足できる品質`
-  ]
+  // 商品名から具体的な特徴を取得
+  let features = productFeatures["default"]
+  for (const key in productFeatures) {
+    if (product.name.includes(key)) {
+      features = productFeatures[key]
+      break
+    }
+  }
   
-  const appeal = appealPoints[Math.floor(Math.random() * appealPoints.length)]
+  const feature = features[Math.floor(Math.random() * features.length)]
   
-  // 口コミ例（商品カテゴリに応じて適切な表現を使用）
+  // 口コミ例
   const reviews = [
     `「リピ確定」「もう手放せない」と絶賛されています`,
     `「買ってよかった」「期待以上だった」という声が続出`,
     `「もっと早く買えばよかった」「コスパ最強」と評判`,
-    `「これは買い」「間違いない商品」と口コミで高評価`,
-    `「満足度高い」「使いやすい」と口コミでも話題沸騰中`
+    `「これは買い」「間違いない商品」と口コミで高評価`
   ]
   
   const review = reviews[Math.floor(Math.random() * reviews.length)]
   
   // テンプレート（例文のような構成）
   const templates = [
-    `${hook} ${product.name}はいかがですか？${selectedEmojis} ${appeal}で、実際に使った人からの満足度も抜群。${review}。売り切れる前にゲットしておきたい逸品です！`,
+    `${hook} ${product.name}はいかがですか？${selectedEmojis} ${feature}で、実際に使った人からの満足度も抜群。楽天で${product.reviewCount}件以上のレビュー、評価${product.rating}を獲得している実力派。${review}。売り切れる前にゲットしておきたい逸品です！`,
     
-    `${hook} そんなあなたにおすすめなのが「${product.name}」！${selectedEmojis} ${appeal}。${review}。${product.price.toLocaleString()}円でこのクオリティなら、間違いなく買いです！`,
+    `${hook} そんなあなたにおすすめなのが「${product.name}」！${selectedEmojis} ${feature}という点が人気の理由。${product.reviewCount}件以上のレビューで評価${product.rating}の高評価を獲得しています。${review}。${product.price.toLocaleString()}円でこのクオリティなら、間違いなく買いです！`,
     
-    `${hook} だからこそ「${product.name}」を試してほしい！${selectedEmojis} ${appeal}という実績が証明しています。${review}。楽天で不動の人気を誇るのも納得の品質です！`
+    `${hook} だからこそ「${product.name}」を試してほしい！${selectedEmojis} ${feature}から、リピーター続出の人気商品。${review}。楽天で${product.reviewCount}件以上のレビュー、評価${product.rating}という実績が証明しています！`
   ]
   
   return templates[Math.floor(Math.random() * templates.length)]
@@ -186,42 +213,42 @@ const categoryNames: Record<string, string> = {
 // デモ商品データ（カスタム検索用に多様な商品を追加）
 const allDemoProducts: Product[] = [
   // 掃除グッズ
-  { name: "激落ちくん メラミンスポンジ 大容量100個入", price: 1280, url: "https://item.rakuten.co.jp/sample/cleaning-001/", imageUrl: "/static/placeholder.jpg", reviewCount: 5430, rating: 4.6, category: "掃除グッズ" },
-  { name: "マイクロファイバー クロス 20枚セット", price: 1580, url: "https://item.rakuten.co.jp/sample/cleaning-002/", imageUrl: "/static/placeholder.jpg", reviewCount: 3120, rating: 4.5, category: "掃除グッズ" },
-  { name: "お風呂掃除ブラシ 電動 充電式", price: 3280, url: "https://item.rakuten.co.jp/sample/cleaning-003/", imageUrl: "/static/placeholder.jpg", reviewCount: 2890, rating: 4.4, category: "掃除グッズ" },
+  { name: "激落ちくん メラミンスポンジ 大容量100個入", price: 1280, url: "https://search.rakuten.co.jp/search/mall/%E6%BF%80%E8%90%BD%E3%81%A1%E3%81%8F%E3%82%93/", imageUrl: "/static/placeholder.jpg", reviewCount: 5430, rating: 4.6, category: "掃除グッズ" },
+  { name: "マイクロファイバー クロス 20枚セット", price: 1580, url: "https://search.rakuten.co.jp/search/mall/%E3%83%9E%E3%82%A4%E3%82%AF%E3%83%AD%E3%83%95%E3%82%A1%E3%82%A4%E3%83%90%E3%83%BC+%E3%82%AF%E3%83%AD%E3%82%B9/", imageUrl: "/static/placeholder.jpg", reviewCount: 3120, rating: 4.5, category: "掃除グッズ" },
+  { name: "お風呂掃除ブラシ 電動 充電式", price: 3280, url: "https://search.rakuten.co.jp/search/mall/%E3%81%8A%E9%A2%A8%E5%91%82%E6%8E%83%E9%99%A4%E3%83%96%E3%83%A9%E3%82%B7+%E9%9B%BB%E5%8B%95/", imageUrl: "/static/placeholder.jpg", reviewCount: 2890, rating: 4.4, category: "掃除グッズ" },
   
   // アウトドア
-  { name: "折りたたみチェア 超軽量 アウトドア", price: 2980, url: "https://item.rakuten.co.jp/sample/outdoor-001/", imageUrl: "/static/placeholder.jpg", reviewCount: 4200, rating: 4.7, category: "アウトドア" },
-  { name: "キャンプテーブル ワンタッチ設営 コンパクト収納", price: 5980, url: "https://item.rakuten.co.jp/sample/outdoor-002/", imageUrl: "/static/placeholder.jpg", reviewCount: 3200, rating: 4.7, category: "アウトドア" },
-  { name: "LEDランタン USB充電式 防水", price: 2480, url: "https://item.rakuten.co.jp/sample/outdoor-003/", imageUrl: "/static/placeholder.jpg", reviewCount: 5100, rating: 4.6, category: "アウトドア" },
+  { name: "折りたたみチェア 超軽量 アウトドア", price: 2980, url: "https://search.rakuten.co.jp/search/mall/%E6%8A%98%E3%82%8A%E3%81%9F%E3%81%9F%E3%81%BF%E3%83%81%E3%82%A7%E3%82%A2+%E3%82%A2%E3%82%A6%E3%83%88%E3%83%89%E3%82%A2/", imageUrl: "/static/placeholder.jpg", reviewCount: 4200, rating: 4.7, category: "アウトドア" },
+  { name: "キャンプテーブル ワンタッチ設営 コンパクト収納", price: 5980, url: "https://search.rakuten.co.jp/search/mall/%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%97%E3%83%86%E3%83%BC%E3%83%96%E3%83%AB/", imageUrl: "/static/placeholder.jpg", reviewCount: 3200, rating: 4.7, category: "アウトドア" },
+  { name: "LEDランタン USB充電式 防水", price: 2480, url: "https://search.rakuten.co.jp/search/mall/LED%E3%83%A9%E3%83%B3%E3%82%BF%E3%83%B3+USB/", imageUrl: "/static/placeholder.jpg", reviewCount: 5100, rating: 4.6, category: "アウトドア" },
   
   // DIYグッズ
-  { name: "電動ドライバーセット 充電式 コードレス", price: 4980, url: "https://item.rakuten.co.jp/sample/diy-001/", imageUrl: "/static/placeholder.jpg", reviewCount: 2890, rating: 4.5, category: "DIYグッズ" },
-  { name: "収納棚 組み立て簡単 5段ラック", price: 3580, url: "https://item.rakuten.co.jp/sample/diy-002/", imageUrl: "/static/placeholder.jpg", reviewCount: 1950, rating: 4.4, category: "DIYグッズ" },
-  { name: "工具セット 家庭用 100点セット", price: 3980, url: "https://item.rakuten.co.jp/sample/diy-003/", imageUrl: "/static/placeholder.jpg", reviewCount: 3450, rating: 4.5, category: "DIYグッズ" },
+  { name: "電動ドライバーセット 充電式 コードレス", price: 4980, url: "https://search.rakuten.co.jp/search/mall/%E9%9B%BB%E5%8B%95%E3%83%89%E3%83%A9%E3%82%A4%E3%83%90%E3%83%BC/", imageUrl: "/static/placeholder.jpg", reviewCount: 2890, rating: 4.5, category: "DIYグッズ" },
+  { name: "収納棚 組み立て簡単 5段ラック", price: 3580, url: "https://search.rakuten.co.jp/search/mall/%E5%8F%8E%E7%B4%8D%E6%A3%9A+5%E6%AE%B5/", imageUrl: "/static/placeholder.jpg", reviewCount: 1950, rating: 4.4, category: "DIYグッズ" },
+  { name: "工具セット 家庭用 100点セット", price: 3980, url: "https://search.rakuten.co.jp/search/mall/%E5%B7%A5%E5%85%B7%E3%82%BB%E3%83%83%E3%83%88/", imageUrl: "/static/placeholder.jpg", reviewCount: 3450, rating: 4.5, category: "DIYグッズ" },
   
   // 自動車関連
-  { name: "ドライブレコーダー 前後カメラ フルHD", price: 6980, url: "https://item.rakuten.co.jp/sample/car-001/", imageUrl: "/static/placeholder.jpg", reviewCount: 8540, rating: 4.6, category: "自動車関連" },
-  { name: "車載掃除機 コードレス ハンディクリーナー", price: 2780, url: "https://item.rakuten.co.jp/sample/car-002/", imageUrl: "/static/placeholder.jpg", reviewCount: 3670, rating: 4.5, category: "自動車関連" },
-  { name: "車載スマホホルダー マグネット式", price: 1680, url: "https://item.rakuten.co.jp/sample/car-003/", imageUrl: "/static/placeholder.jpg", reviewCount: 6230, rating: 4.6, category: "自動車関連" },
+  { name: "ドライブレコーダー 前後カメラ フルHD", price: 6980, url: "https://search.rakuten.co.jp/search/mall/%E3%83%89%E3%83%A9%E3%82%A4%E3%83%96%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%80%E3%83%BC/", imageUrl: "/static/placeholder.jpg", reviewCount: 8540, rating: 4.6, category: "自動車関連" },
+  { name: "車載掃除機 コードレス ハンディクリーナー", price: 2780, url: "https://search.rakuten.co.jp/search/mall/%E8%BB%8A%E8%BC%89%E6%8E%83%E9%99%A4%E6%A9%9F/", imageUrl: "/static/placeholder.jpg", reviewCount: 3670, rating: 4.5, category: "自動車関連" },
+  { name: "車載スマホホルダー マグネット式", price: 1680, url: "https://search.rakuten.co.jp/search/mall/%E8%BB%8A%E8%BC%89%E3%82%B9%E3%83%9E%E3%83%9B%E3%83%9B%E3%83%AB%E3%83%80%E3%83%BC/", imageUrl: "/static/placeholder.jpg", reviewCount: 6230, rating: 4.6, category: "自動車関連" },
   
   // 文房具（カスタム検索用）
-  { name: "ボールペン 可愛い 10本セット パステルカラー", price: 1280, url: "https://item.rakuten.co.jp/sample/stationery-001/", imageUrl: "/static/placeholder.jpg", reviewCount: 4560, rating: 4.7, category: "文房具" },
-  { name: "付箋 可愛い 動物デザイン 8種類セット", price: 980, url: "https://item.rakuten.co.jp/sample/stationery-002/", imageUrl: "/static/placeholder.jpg", reviewCount: 3890, rating: 4.6, category: "文房具" },
-  { name: "マスキングテープ 可愛い 24巻セット", price: 1580, url: "https://item.rakuten.co.jp/sample/stationery-003/", imageUrl: "/static/placeholder.jpg", reviewCount: 5120, rating: 4.8, category: "文房具" },
-  { name: "手帳 2024 可愛い B6サイズ", price: 1980, url: "https://item.rakuten.co.jp/sample/stationery-004/", imageUrl: "/static/placeholder.jpg", reviewCount: 2340, rating: 4.5, category: "文房具" },
-  { name: "シャープペンシル 可愛い 0.5mm 5本セット", price: 1480, url: "https://item.rakuten.co.jp/sample/stationery-005/", imageUrl: "/static/placeholder.jpg", reviewCount: 3210, rating: 4.6, category: "文房具" },
+  { name: "ボールペン 可愛い 10本セット パステルカラー", price: 1280, url: "https://search.rakuten.co.jp/search/mall/%E3%83%9C%E3%83%BC%E3%83%AB%E3%83%9A%E3%83%B3+%E5%8F%AF%E6%84%9B%E3%81%84+10%E6%9C%AC/", imageUrl: "/static/placeholder.jpg", reviewCount: 4560, rating: 4.7, category: "文房具" },
+  { name: "付箋 可愛い 動物デザイン 8種類セット", price: 980, url: "https://search.rakuten.co.jp/search/mall/%E4%BB%98%E7%AE%8B+%E5%8F%AF%E6%84%9B%E3%81%84+%E5%8B%95%E7%89%A9/", imageUrl: "/static/placeholder.jpg", reviewCount: 3890, rating: 4.6, category: "文房具" },
+  { name: "マスキングテープ 可愛い 24巻セット", price: 1580, url: "https://search.rakuten.co.jp/search/mall/%E3%83%9E%E3%82%B9%E3%82%AD%E3%83%B3%E3%82%B0%E3%83%86%E3%83%BC%E3%83%97+%E5%8F%AF%E6%84%9B%E3%81%84/", imageUrl: "/static/placeholder.jpg", reviewCount: 5120, rating: 4.8, category: "文房具" },
+  { name: "手帳 2024 可愛い B6サイズ", price: 1980, url: "https://search.rakuten.co.jp/search/mall/%E6%89%8B%E5%B8%B3+2024+%E5%8F%AF%E6%84%9B%E3%81%84/", imageUrl: "/static/placeholder.jpg", reviewCount: 2340, rating: 4.5, category: "文房具" },
+  { name: "シャープペンシル 可愛い 0.5mm 5本セット", price: 1480, url: "https://search.rakuten.co.jp/search/mall/%E3%82%B7%E3%83%A3%E3%83%BC%E3%83%97%E3%83%9A%E3%83%B3%E3%82%B7%E3%83%AB+%E5%8F%AF%E6%84%9B%E3%81%84/", imageUrl: "/static/placeholder.jpg", reviewCount: 3210, rating: 4.6, category: "文房具" },
   
   // 冬・あったかグッズ（カスタム検索用）
-  { name: "裏起毛パンツ レディース 暖かい ストレッチ", price: 2380, url: "https://item.rakuten.co.jp/sample/winter-001/", imageUrl: "/static/placeholder.jpg", reviewCount: 8970, rating: 4.7, category: "冬グッズ" },
-  { name: "電気毛布 USB 膝掛け あったか", price: 3280, url: "https://item.rakuten.co.jp/sample/winter-002/", imageUrl: "/static/placeholder.jpg", reviewCount: 6540, rating: 4.6, category: "冬グッズ" },
-  { name: "ルームソックス もこもこ 暖かい", price: 1180, url: "https://item.rakuten.co.jp/sample/winter-003/", imageUrl: "/static/placeholder.jpg", reviewCount: 4230, rating: 4.5, category: "冬グッズ" },
-  { name: "カイロ 貼る 30個入 あったか", price: 980, url: "https://item.rakuten.co.jp/sample/winter-004/", imageUrl: "/static/placeholder.jpg", reviewCount: 5670, rating: 4.6, category: "冬グッズ" },
+  { name: "裏起毛パンツ レディース 暖かい ストレッチ", price: 2380, url: "https://search.rakuten.co.jp/search/mall/%E8%A3%8F%E8%B5%B7%E6%AF%9B%E3%83%91%E3%83%B3%E3%83%84+%E3%83%AC%E3%83%87%E3%82%A3%E3%83%BC%E3%82%B9/", imageUrl: "/static/placeholder.jpg", reviewCount: 8970, rating: 4.7, category: "冬グッズ" },
+  { name: "電気毛布 USB 膝掛け あったか", price: 3280, url: "https://search.rakuten.co.jp/search/mall/%E9%9B%BB%E6%B0%97%E6%AF%9B%E5%B8%83+USB/", imageUrl: "/static/placeholder.jpg", reviewCount: 6540, rating: 4.6, category: "冬グッズ" },
+  { name: "ルームソックス もこもこ 暖かい", price: 1180, url: "https://search.rakuten.co.jp/search/mall/%E3%83%AB%E3%83%BC%E3%83%A0%E3%82%BD%E3%83%83%E3%82%AF%E3%82%B9+%E3%82%82%E3%81%93%E3%82%82%E3%81%93/", imageUrl: "/static/placeholder.jpg", reviewCount: 4230, rating: 4.5, category: "冬グッズ" },
+  { name: "カイロ 貼る 30個入 あったか", price: 980, url: "https://search.rakuten.co.jp/search/mall/%E3%82%AB%E3%82%A4%E3%83%AD+%E8%B2%BC%E3%82%8B/", imageUrl: "/static/placeholder.jpg", reviewCount: 5670, rating: 4.6, category: "冬グッズ" },
   
   // プレゼント1000円台（カスタム検索用）
-  { name: "入浴剤 ギフトセット 10種類 プレゼント", price: 1480, url: "https://item.rakuten.co.jp/sample/gift-001/", imageUrl: "/static/placeholder.jpg", reviewCount: 3890, rating: 4.6, category: "ギフト" },
-  { name: "ハンドクリーム ギフト 3本セット プレゼント", price: 1680, url: "https://item.rakuten.co.jp/sample/gift-002/", imageUrl: "/static/placeholder.jpg", reviewCount: 4120, rating: 4.7, category: "ギフト" },
-  { name: "紅茶 ギフトセット 5種類 プレゼント", price: 1980, url: "https://item.rakuten.co.jp/sample/gift-003/", imageUrl: "/static/placeholder.jpg", reviewCount: 2560, rating: 4.5, category: "ギフト" }
+  { name: "入浴剤 ギフトセット 10種類 プレゼント", price: 1480, url: "https://search.rakuten.co.jp/search/mall/%E5%85%A5%E6%B5%B4%E5%89%A4+%E3%82%AE%E3%83%95%E3%83%88/", imageUrl: "/static/placeholder.jpg", reviewCount: 3890, rating: 4.6, category: "ギフト" },
+  { name: "ハンドクリーム ギフト 3本セット プレゼント", price: 1680, url: "https://search.rakuten.co.jp/search/mall/%E3%83%8F%E3%83%B3%E3%83%89%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%A0+%E3%82%AE%E3%83%95%E3%83%88/", imageUrl: "/static/placeholder.jpg", reviewCount: 4120, rating: 4.7, category: "ギフト" },
+  { name: "紅茶 ギフトセット 5種類 プレゼント", price: 1980, url: "https://search.rakuten.co.jp/search/mall/%E7%B4%85%E8%8C%B6+%E3%82%AE%E3%83%95%E3%83%88/", imageUrl: "/static/placeholder.jpg", reviewCount: 2560, rating: 4.5, category: "ギフト" }
 ]
 
 // カテゴリ別商品データ（既存のカテゴリボタン用）
