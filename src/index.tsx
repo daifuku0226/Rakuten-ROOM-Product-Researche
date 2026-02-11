@@ -172,30 +172,123 @@ const categoryNames: Record<string, string> = {
   car: '自動車関連'
 }
 
-// API: カテゴリ別商品取得（楽天API使用）
+// デモ商品データ
+const demoProducts: Record<string, Product[]> = {
+  cleaning: [
+    {
+      name: "激落ちくん メラミンスポンジ 大容量100個入",
+      price: 1280,
+      url: "https://item.rakuten.co.jp/sample/cleaning-001/",
+      imageUrl: "/static/placeholder.jpg",
+      reviewCount: 5430,
+      rating: 4.6,
+      category: "掃除グッズ"
+    },
+    {
+      name: "マイクロファイバー クロス 20枚セット",
+      price: 1580,
+      url: "https://item.rakuten.co.jp/sample/cleaning-002/",
+      imageUrl: "/static/placeholder.jpg",
+      reviewCount: 3120,
+      rating: 4.5,
+      category: "掃除グッズ"
+    }
+  ],
+  outdoor: [
+    {
+      name: "折りたたみチェア 超軽量 アウトドア",
+      price: 2980,
+      url: "https://item.rakuten.co.jp/sample/outdoor-001/",
+      imageUrl: "/static/placeholder.jpg",
+      reviewCount: 4200,
+      rating: 4.7,
+      category: "アウトドア"
+    },
+    {
+      name: "キャンプテーブル ワンタッチ設営 コンパクト収納",
+      price: 5980,
+      url: "https://item.rakuten.co.jp/sample/outdoor-002/",
+      imageUrl: "/static/placeholder.jpg",
+      reviewCount: 3200,
+      rating: 4.7,
+      category: "アウトドア"
+    }
+  ],
+  diy: [
+    {
+      name: "電動ドライバーセット 充電式 コードレス",
+      price: 4980,
+      url: "https://item.rakuten.co.jp/sample/diy-001/",
+      imageUrl: "/static/placeholder.jpg",
+      reviewCount: 2890,
+      rating: 4.5,
+      category: "DIYグッズ"
+    },
+    {
+      name: "収納棚 組み立て簡単 5段ラック",
+      price: 3580,
+      url: "https://item.rakuten.co.jp/sample/diy-002/",
+      imageUrl: "/static/placeholder.jpg",
+      reviewCount: 1950,
+      rating: 4.4,
+      category: "DIYグッズ"
+    }
+  ],
+  car: [
+    {
+      name: "ドライブレコーダー 前後カメラ フルHD",
+      price: 6980,
+      url: "https://item.rakuten.co.jp/sample/car-001/",
+      imageUrl: "/static/placeholder.jpg",
+      reviewCount: 8540,
+      rating: 4.6,
+      category: "自動車関連"
+    },
+    {
+      name: "車載掃除機 コードレス ハンディクリーナー",
+      price: 2780,
+      url: "https://item.rakuten.co.jp/sample/car-002/",
+      imageUrl: "/static/placeholder.jpg",
+      reviewCount: 3670,
+      rating: 4.5,
+      category: "自動車関連"
+    }
+  ]
+}
+
+// API: カテゴリ別商品取得（デモデータ優先）
 app.get('/api/products/:category', async (c) => {
   const category = c.req.param('category')
-  const { RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID } = c.env
   
-  if (!RAKUTEN_APP_ID || !RAKUTEN_ACCESS_KEY || !RAKUTEN_AFFILIATE_ID) {
-    return c.json({ error: 'API設定が不足しています' }, 500)
-  }
-
-  const keywords = categoryKeywords[category]
-  if (!keywords) {
-    return c.json({ error: 'カテゴリが見つかりません' }, 404)
-  }
-
-  // ランダムにキーワードを選択
-  const keyword = keywords[Math.floor(Math.random() * keywords.length)]
+  // デモデータを使用
+  let products = demoProducts[category] || []
   
-  const products = await searchRakutenProducts(
-    keyword,
-    RAKUTEN_APP_ID,
-    RAKUTEN_ACCESS_KEY,
-    RAKUTEN_AFFILIATE_ID,
-    10
-  )
+  // 楽天APIを試行（オプション）
+  const { RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID } = c.env || {}
+  
+  if (RAKUTEN_APP_ID && RAKUTEN_ACCESS_KEY && RAKUTEN_AFFILIATE_ID && products.length === 0) {
+    const keywords = categoryKeywords[category]
+    if (keywords) {
+      const keyword = keywords[Math.floor(Math.random() * keywords.length)]
+      
+      try {
+        const apiProducts = await searchRakutenProducts(
+          keyword,
+          RAKUTEN_APP_ID,
+          RAKUTEN_ACCESS_KEY,
+          RAKUTEN_AFFILIATE_ID,
+          10
+        )
+        
+        if (apiProducts.length > 0) {
+          products = apiProducts
+        }
+      } catch (error) {
+        console.error('楽天API呼び出しエラー:', error)
+        // デモデータにフォールバック
+      }
+    }
+  }
 
   // カテゴリ名を設定
   const categoryName = categoryNames[category] || 'おすすめ商品'
@@ -213,37 +306,47 @@ app.get('/api/products/:category', async (c) => {
   return c.json(productsWithDescriptions)
 })
 
-// API: ランダムに10商品取得（楽天API使用）
+// API: ランダムに10商品取得（デモデータ優先）
 app.get('/api/products/random/10', async (c) => {
-  const { RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID } = c.env
-  
-  if (!RAKUTEN_APP_ID || !RAKUTEN_ACCESS_KEY || !RAKUTEN_AFFILIATE_ID) {
-    return c.json({ error: 'API設定が不足しています' }, 500)
-  }
-
-  // 全カテゴリからランダムに選択
-  const allKeywords = Object.values(categoryKeywords).flat()
-  const selectedKeywords = [...allKeywords]
-    .sort(() => 0.5 - Math.random())
-    .slice(0, 3)
-  
-  const allProducts: Product[] = []
-  
-  for (const keyword of selectedKeywords) {
-    const products = await searchRakutenProducts(
-      keyword,
-      RAKUTEN_APP_ID,
-      RAKUTEN_ACCESS_KEY,
-      RAKUTEN_AFFILIATE_ID,
-      4
-    )
-    allProducts.push(...products)
-  }
-
-  // ランダムに10商品選択
-  const selectedProducts = allProducts
+  // デモデータから10商品をランダムに選択
+  const allDemoProducts = Object.values(demoProducts).flat()
+  let selectedProducts = [...allDemoProducts]
     .sort(() => 0.5 - Math.random())
     .slice(0, 10)
+  
+  // 楽天APIを試行（オプション）
+  const { RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID } = c.env || {}
+  
+  if (RAKUTEN_APP_ID && RAKUTEN_ACCESS_KEY && RAKUTEN_AFFILIATE_ID) {
+    try {
+      const allKeywords = Object.values(categoryKeywords).flat()
+      const selectedKeywords = [...allKeywords]
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 3)
+      
+      const allProducts: Product[] = []
+      
+      for (const keyword of selectedKeywords) {
+        const products = await searchRakutenProducts(
+          keyword,
+          RAKUTEN_APP_ID,
+          RAKUTEN_ACCESS_KEY,
+          RAKUTEN_AFFILIATE_ID,
+          4
+        )
+        allProducts.push(...products)
+      }
+
+      if (allProducts.length > 0) {
+        selectedProducts = allProducts
+          .sort(() => 0.5 - Math.random())
+          .slice(0, 10)
+      }
+    } catch (error) {
+      console.error('楽天API呼び出しエラー:', error)
+      // デモデータにフォールバック
+    }
+  }
 
   const productsWithDescriptions = selectedProducts.map(product => ({
     ...product,
