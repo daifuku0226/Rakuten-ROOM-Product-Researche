@@ -187,7 +187,12 @@ async function searchRakutenProducts(
     })
 
     const response = await fetch(
-      `https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706?${params.toString()}`
+      `https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706?${params.toString()}`,
+      {
+        headers: {
+          'Referer': 'https://rakuten-room-researcher.pages.dev/'
+        }
+      }
     )
 
     if (!response.ok) {
