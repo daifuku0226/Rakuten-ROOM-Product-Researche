@@ -25,465 +25,7 @@ app.get('/api/config', (c) => {
   })
 })
 
-// 商品データの型定義
-interface Product {
-  name: string
-  price: number
-  url: string
-  imageUrl: string
-  reviewCount: number
-  rating: number
-  category: string
-  description?: string  // 商品説明を追加
-  caption?: string  // APIから取得した商品キャプション
-}
-
-// 楽天市場APIレスポンスの型定義 (旧バージョン)
-interface RakutenItem {
-  Item: {
-    itemName: string
-    itemPrice: number
-    itemUrl: string
-    mediumImageUrls?: Array<{ imageUrl: string }>
-    reviewCount: number
-    reviewAverage: number
-    genreId: string
-    shopName: string
-    affiliateUrl?: string
-    itemCaption?: string  // 商品説明文を追加
-  }
-}
-
-// キャッチーなフック（1文目用）
-const catchyHooks = [
-  "他人への愛情よりも自分へのご褒美が優先だよね！",
-  "いつまでそれで勝負するつもり？早く買い換えて暖かさを味方にしようよ！",
-  "まだ我慢してるの？人生は一度きりだよ！",
-  "その悩み、この商品で一発解決できるかも！",
-  "知らないと損！みんなが黙って買ってる理由がこれ！",
-  "え、まだ使ってないの？人生損してるかも！",
-  "今年こそ変わりたいなら、これが答えかも！",
-  "ズボラさんでも続けられる秘密、教えます！",
-  "コスパ最強すぎて笑えてくる！",
-  "一度使ったら戻れない、そんな魔法のアイテム！",
-  "SNSで話題沸騰！売り切れる前にゲットしよ！",
-  "こんなに便利なのに、なんで今まで知らなかったの？",
-  "プロも愛用してる理由、わかっちゃった！",
-  "もう我慢しなくていいんだよ、自分を甘やかそう！",
-  "これがあれば毎日がもっと楽しくなる予感！"
-]
-
-const emojis = ["✨", "💡", "🎯", "👏", "🔥", "💪", "🌟", "❤️", "😊", "🎉", "⭐", "👍", "💖", "🙌", "😍", "🍫", "👖", "🎁", "🔥"]
-
-// カテゴリ別の検索キーワード
-const categoryKeywords: Record<string, string[]> = {
-  cleaning: [
-    "掃除用具", "クリーナー", "モップ", "ほうき", "雑巾", "洗剤", 
-    "メラミンスポンジ", "掃除機", "フローリング", "お風呂掃除"
-  ],
-  outdoor: [
-    "キャンプ", "アウトドア", "テント", "チェア", "テーブル", 
-    "BBQ", "バーベキュー", "寝袋", "ランタン", "クーラーボックス"
-  ],
-  diy: [
-    "工具", "DIY", "電動ドライバー", "のこぎり", "ハンマー",
-    "棚", "収納", "組み立て", "ドリル", "ネジ"
-  ],
-  car: [
-    "カー用品", "車載", "ドライブレコーダー", "カーナビ", "シートカバー",
-    "掃除機", "カーアクセサリー", "芳香剤", "タイヤ", "洗車"
-  ]
-}
-
-// 商品別の具体的な特徴マッピング
-const productFeatures: Record<string, string[]> = {
-  "ボールペン": ["10色のパステルカラーでノートを可愛く彩れる", "書き心地なめらかで手が疲れない", "インクがかすれずスムーズに書ける"],
-  "付箋": ["動物デザインが可愛くて癒される", "粘着力がちょうどよく、剥がしやすい", "8種類あるから使い分けが楽しい"],
-  "マスキングテープ": ["24巻セットでデコレーションし放題", "手帳やノートを華やかに演出できる", "貼って剥がせるから失敗しても安心"],
-  "手帳": ["B6サイズで持ち運びやすい", "月間・週間ページが充実していて使いやすい", "可愛いデザインで毎日開くのが楽しみになる"],
-  "シャープペンシル": ["0.5mmで細かい文字も書きやすい", "握りやすいグリップで長時間使っても疲れない", "可愛いデザインでテンションが上がる"],
-  "裏起毛パンツ": ["ストレッチが効いて動きやすい", "裏は毛布みたいにもこもこで暖かい", "見た目はスッキリなのに防寒性抜群"],
-  "電気毛布": ["USB給電だからどこでも使える", "膝掛けサイズでオフィスでも便利", "3段階温度調節で自分好みの暖かさに"],
-  "ルームソックス": ["もこもこ素材で足元ぽかぽか", "滑り止め付きで安全", "洗濯機で丸洗いOKでお手入れ簡単"],
-  "カイロ": ["貼るタイプで服に固定できる", "8時間以上持続する暖かさ", "30個入りで冬中使える大容量"],
-  "激落ちくん": ["水だけで汚れが落ちる、洗剤不要のエコ掃除", "100個入りの大容量でコスパ最強", "キッチン、お風呂、窓ガラスなど万能に使える"],
-  "マイクロファイバー": ["20枚セットで使い分けできる", "吸水性抜群で拭き掃除が楽ちん", "洗って繰り返し使えて経済的"],
-  "ドライブレコーダー": ["前後カメラで死角なし、万が一の事故も安心", "フルHD画質でナンバーもくっきり録画", "駐車監視機能付きで当て逃げ対策も完璧"],
-  "折りたたみチェア": ["超軽量で持ち運びが楽々", "ワンタッチで設営・収納が簡単", "コンパクトに折りたためて車のトランクにもすっぽり"],
-  "キャンプテーブル": ["ワンタッチで設営完了、組み立て不要", "コンパクト収納で持ち運びに便利", "安定感抜群で揺れない"],
-  "LEDランタン": ["USB充電式で電池不要", "防水設計でアウトドアでも安心", "明るさ調整できて使い勝手抜群"],
-  "電動ドライバー": ["充電式でコードレス、どこでも使える", "トルク調整機能付きで木材もネジも楽々", "初心者でも簡単に使えるシンプル設計"],
-  "収納棚": ["組み立て簡単、工具不要", "5段あるから収納力抜群", "シンプルデザインでどんな部屋にも馴染む"],
-  "工具セット": ["100点セットで家庭の修理に十分", "収納ケース付きで整理しやすい", "初心者でも使いやすい基本工具が揃ってる"],
-  "車載掃除機": ["コードレスで車内掃除が楽々", "コンパクトで収納に困らない", "吸引力が強くて細かいゴミもしっかり吸う"],
-  "車載スマホホルダー": ["マグネット式でワンタッチ装着", "360度回転で角度調整自由", "振動に強くてスマホが落ちない"],
-  "入浴剤": ["10種類の香りが楽しめる", "ギフトボックス入りでプレゼントに最適", "保湿成分配合で肌がしっとり"],
-  "ハンドクリーム": ["3本セットで使い分けできる", "べたつかないのにしっとり潤う", "持ち運びやすいサイズでギフトにも◎"],
-  "紅茶": ["5種類のフレーバーが楽しめる", "ティーバッグで手軽に淹れられる", "ギフトボックス入りで見た目も華やか"],
-  "default": ["実際に使った人からの満足度が高い", "コスパが良くて長く使える", "初心者でも使いやすい設計"]
-}
-
-// 商品説明から特徴を抽出する関数
-function extractFeatures(caption: string | undefined): string {
-  if (!caption) return "実際に使った人からの満足度が高い商品です"
-  
-  // キャプションから最初の100文字程度を抜粋（簡易版）
-  const shortCaption = caption.substring(0, 100).replace(/<[^>]*>/g, '').trim()
-  return shortCaption || "実際に使った人からの満足度が高い商品です"
-}
-
-// 紹介文生成関数（実際の商品説明を反映）
-function generateDescription(product: Product): string {
-  const hook = catchyHooks[Math.floor(Math.random() * catchyHooks.length)]
-  const selectedEmojis = [...Array(3)].map(() => 
-    emojis[Math.floor(Math.random() * emojis.length)]
-  ).join('')
-  
-  // 実際の商品説明から特徴を抽出（APIデータ優先）
-  let feature: string
-  
-  if (product.caption) {
-    // APIから取得した商品説明を使用
-    feature = extractFeatures(product.caption)
-  } else {
-    // フォールバック: 商品名から具体的な特徴を取得
-    let features = productFeatures["default"]
-    for (const key in productFeatures) {
-      if (product.name.includes(key)) {
-        features = productFeatures[key]
-        break
-      }
-    }
-    feature = features[Math.floor(Math.random() * features.length)]
-  }
-  
-  // 口コミ例
-  const reviews = [
-    `「リピ確定」「もう手放せない」と絶賛されています`,
-    `「買ってよかった」「期待以上だった」という声が続出`,
-    `「もっと早く買えばよかった」「コスパ最強」と評判`,
-    `「これは買い」「間違いない商品」と口コミで高評価`
-  ]
-  
-  const review = reviews[Math.floor(Math.random() * reviews.length)]
-  
-  // テンプレート（例文のような構成）
-  const templates = [
-    `${hook} ${product.name}はいかがですか？${selectedEmojis} ${feature}で、実際に使った人からの満足度も抜群。楽天で${product.reviewCount}件以上のレビュー、評価${product.rating}を獲得している実力派。${review}。売り切れる前にゲットしておきたい逸品です！`,
-    
-    `${hook} そんなあなたにおすすめなのが「${product.name}」！${selectedEmojis} ${feature}という点が人気の理由。${product.reviewCount}件以上のレビューで評価${product.rating}の高評価を獲得しています。${review}。${product.price.toLocaleString()}円でこのクオリティなら、間違いなく買いです！`,
-    
-    `${hook} だからこそ「${product.name}」を試してほしい！${selectedEmojis} ${feature}から、リピーター続出の人気商品。${review}。楽天で${product.reviewCount}件以上のレビュー、評価${product.rating}という実績が証明しています！`
-  ]
-  
-  return templates[Math.floor(Math.random() * templates.length)]
-}
-
-// 楽天市場API検索関数
-async function searchRakutenProducts(
-  keyword: string, 
-  appId: string,
-  accessKey: string,
-  affiliateId: string,
-  maxItems: number = 10
-): Promise<Product[]> {
-  try {
-    const params = new URLSearchParams({
-      applicationId: appId,
-      accessKey: accessKey,  // 新しいAPI仕様ではaccessKeyが必須
-      keyword: keyword,
-      hits: maxItems.toString(),
-      minPrice: '1000',
-      maxPrice: '10000',
-      sort: '-reviewCount', // レビュー数順
-      affiliateId: affiliateId
-    })
-
-    // 新しいエンドポイント（openapi.rakuten.co.jp）を使用
-    // Cloudflare Workersでは、fetchのreferrerオプションでRefererを指定
-    const response = await fetch(
-      `https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601?format=json&${params.toString()}`,
-      {
-        headers: {
-          'Referer': 'https://rakuten-room-researcher.pages.dev/',
-          'User-Agent': 'Mozilla/5.0 (compatible; RakutenRoomResearcher/1.0)'
-        },
-        referrer: 'https://rakuten-room-researcher.pages.dev/',  // Fetch API標準のreferrerオプション
-        referrerPolicy: 'no-referrer-when-downgrade'
-      }
-    )
-
-    if (!response.ok) {
-      throw new Error(`楽天API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    
-    if (!data.Items || data.Items.length === 0) {
-      return []
-    }
-
-    return data.Items.slice(0, maxItems).map((item: RakutenItem) => ({
-      name: item.Item.itemName,
-      price: item.Item.itemPrice,
-      url: item.Item.affiliateUrl || item.Item.itemUrl,
-      imageUrl: item.Item.mediumImageUrls?.[0]?.imageUrl || '/static/placeholder.jpg',
-      reviewCount: item.Item.reviewCount || 0,
-      rating: item.Item.reviewAverage || 0,
-      category: getCategoryName(item.Item.genreId),
-      caption: item.Item.itemCaption  // 商品説明を保存
-    }))
-  } catch (error) {
-    console.error('楽天API検索エラー:', error)
-    return []
-  }
-}
-
-// カテゴリ名取得
-function getCategoryName(genreId: string): string {
-  // ジャンルIDからカテゴリ名を推測（簡易版）
-  return 'おすすめ商品'
-}
-
-// カテゴリ名マッピング
-const categoryNames: Record<string, string> = {
-  cleaning: '掃除グッズ',
-  outdoor: 'アウトドア',
-  diy: 'DIYグッズ',
-  car: '自動車関連'
-}
-
-// デモ商品データ（カスタム検索用に多様な商品を追加）
-const allDemoProducts: Product[] = [
-  // 掃除グッズ
-  { name: "激落ちくん メラミンスポンジ 大容量100個入", price: 1280, url: "https://search.rakuten.co.jp/search/mall/%E6%BF%80%E8%90%BD%E3%81%A1%E3%81%8F%E3%82%93/", imageUrl: "/static/placeholder.jpg", reviewCount: 5430, rating: 4.6, category: "掃除グッズ" },
-  { name: "マイクロファイバー クロス 20枚セット", price: 1580, url: "https://search.rakuten.co.jp/search/mall/%E3%83%9E%E3%82%A4%E3%82%AF%E3%83%AD%E3%83%95%E3%82%A1%E3%82%A4%E3%83%90%E3%83%BC+%E3%82%AF%E3%83%AD%E3%82%B9/", imageUrl: "/static/placeholder.jpg", reviewCount: 3120, rating: 4.5, category: "掃除グッズ" },
-  { name: "お風呂掃除ブラシ 電動 充電式", price: 3280, url: "https://search.rakuten.co.jp/search/mall/%E3%81%8A%E9%A2%A8%E5%91%82%E6%8E%83%E9%99%A4%E3%83%96%E3%83%A9%E3%82%B7+%E9%9B%BB%E5%8B%95/", imageUrl: "/static/placeholder.jpg", reviewCount: 2890, rating: 4.4, category: "掃除グッズ" },
-  
-  // アウトドア
-  { name: "折りたたみチェア 超軽量 アウトドア", price: 2980, url: "https://search.rakuten.co.jp/search/mall/%E6%8A%98%E3%82%8A%E3%81%9F%E3%81%9F%E3%81%BF%E3%83%81%E3%82%A7%E3%82%A2+%E3%82%A2%E3%82%A6%E3%83%88%E3%83%89%E3%82%A2/", imageUrl: "/static/placeholder.jpg", reviewCount: 4200, rating: 4.7, category: "アウトドア" },
-  { name: "キャンプテーブル ワンタッチ設営 コンパクト収納", price: 5980, url: "https://search.rakuten.co.jp/search/mall/%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%97%E3%83%86%E3%83%BC%E3%83%96%E3%83%AB/", imageUrl: "/static/placeholder.jpg", reviewCount: 3200, rating: 4.7, category: "アウトドア" },
-  { name: "LEDランタン USB充電式 防水", price: 2480, url: "https://search.rakuten.co.jp/search/mall/LED%E3%83%A9%E3%83%B3%E3%82%BF%E3%83%B3+USB/", imageUrl: "/static/placeholder.jpg", reviewCount: 5100, rating: 4.6, category: "アウトドア" },
-  
-  // DIYグッズ
-  { name: "電動ドライバーセット 充電式 コードレス", price: 4980, url: "https://search.rakuten.co.jp/search/mall/%E9%9B%BB%E5%8B%95%E3%83%89%E3%83%A9%E3%82%A4%E3%83%90%E3%83%BC/", imageUrl: "/static/placeholder.jpg", reviewCount: 2890, rating: 4.5, category: "DIYグッズ" },
-  { name: "収納棚 組み立て簡単 5段ラック", price: 3580, url: "https://search.rakuten.co.jp/search/mall/%E5%8F%8E%E7%B4%8D%E6%A3%9A+5%E6%AE%B5/", imageUrl: "/static/placeholder.jpg", reviewCount: 1950, rating: 4.4, category: "DIYグッズ" },
-  { name: "工具セット 家庭用 100点セット", price: 3980, url: "https://search.rakuten.co.jp/search/mall/%E5%B7%A5%E5%85%B7%E3%82%BB%E3%83%83%E3%83%88/", imageUrl: "/static/placeholder.jpg", reviewCount: 3450, rating: 4.5, category: "DIYグッズ" },
-  
-  // 自動車関連
-  { name: "ドライブレコーダー 前後カメラ フルHD", price: 6980, url: "https://search.rakuten.co.jp/search/mall/%E3%83%89%E3%83%A9%E3%82%A4%E3%83%96%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%80%E3%83%BC/", imageUrl: "/static/placeholder.jpg", reviewCount: 8540, rating: 4.6, category: "自動車関連" },
-  { name: "車載掃除機 コードレス ハンディクリーナー", price: 2780, url: "https://search.rakuten.co.jp/search/mall/%E8%BB%8A%E8%BC%89%E6%8E%83%E9%99%A4%E6%A9%9F/", imageUrl: "/static/placeholder.jpg", reviewCount: 3670, rating: 4.5, category: "自動車関連" },
-  { name: "車載スマホホルダー マグネット式", price: 1680, url: "https://search.rakuten.co.jp/search/mall/%E8%BB%8A%E8%BC%89%E3%82%B9%E3%83%9E%E3%83%9B%E3%83%9B%E3%83%AB%E3%83%80%E3%83%BC/", imageUrl: "/static/placeholder.jpg", reviewCount: 6230, rating: 4.6, category: "自動車関連" },
-  
-  // 文房具（カスタム検索用）
-  { name: "ボールペン 可愛い 10本セット パステルカラー", price: 1280, url: "https://search.rakuten.co.jp/search/mall/%E3%83%9C%E3%83%BC%E3%83%AB%E3%83%9A%E3%83%B3+%E5%8F%AF%E6%84%9B%E3%81%84+10%E6%9C%AC/", imageUrl: "/static/placeholder.jpg", reviewCount: 4560, rating: 4.7, category: "文房具" },
-  { name: "付箋 可愛い 動物デザイン 8種類セット", price: 980, url: "https://search.rakuten.co.jp/search/mall/%E4%BB%98%E7%AE%8B+%E5%8F%AF%E6%84%9B%E3%81%84+%E5%8B%95%E7%89%A9/", imageUrl: "/static/placeholder.jpg", reviewCount: 3890, rating: 4.6, category: "文房具" },
-  { name: "マスキングテープ 可愛い 24巻セット", price: 1580, url: "https://search.rakuten.co.jp/search/mall/%E3%83%9E%E3%82%B9%E3%82%AD%E3%83%B3%E3%82%B0%E3%83%86%E3%83%BC%E3%83%97+%E5%8F%AF%E6%84%9B%E3%81%84/", imageUrl: "/static/placeholder.jpg", reviewCount: 5120, rating: 4.8, category: "文房具" },
-  { name: "手帳 2024 可愛い B6サイズ", price: 1980, url: "https://search.rakuten.co.jp/search/mall/%E6%89%8B%E5%B8%B3+2024+%E5%8F%AF%E6%84%9B%E3%81%84/", imageUrl: "/static/placeholder.jpg", reviewCount: 2340, rating: 4.5, category: "文房具" },
-  { name: "シャープペンシル 可愛い 0.5mm 5本セット", price: 1480, url: "https://search.rakuten.co.jp/search/mall/%E3%82%B7%E3%83%A3%E3%83%BC%E3%83%97%E3%83%9A%E3%83%B3%E3%82%B7%E3%83%AB+%E5%8F%AF%E6%84%9B%E3%81%84/", imageUrl: "/static/placeholder.jpg", reviewCount: 3210, rating: 4.6, category: "文房具" },
-  
-  // 冬・あったかグッズ（カスタム検索用）
-  { name: "裏起毛パンツ レディース 暖かい ストレッチ", price: 2380, url: "https://search.rakuten.co.jp/search/mall/%E8%A3%8F%E8%B5%B7%E6%AF%9B%E3%83%91%E3%83%B3%E3%83%84+%E3%83%AC%E3%83%87%E3%82%A3%E3%83%BC%E3%82%B9/", imageUrl: "/static/placeholder.jpg", reviewCount: 8970, rating: 4.7, category: "冬グッズ" },
-  { name: "電気毛布 USB 膝掛け あったか", price: 3280, url: "https://search.rakuten.co.jp/search/mall/%E9%9B%BB%E6%B0%97%E6%AF%9B%E5%B8%83+USB/", imageUrl: "/static/placeholder.jpg", reviewCount: 6540, rating: 4.6, category: "冬グッズ" },
-  { name: "ルームソックス もこもこ 暖かい", price: 1180, url: "https://search.rakuten.co.jp/search/mall/%E3%83%AB%E3%83%BC%E3%83%A0%E3%82%BD%E3%83%83%E3%82%AF%E3%82%B9+%E3%82%82%E3%81%93%E3%82%82%E3%81%93/", imageUrl: "/static/placeholder.jpg", reviewCount: 4230, rating: 4.5, category: "冬グッズ" },
-  { name: "カイロ 貼る 30個入 あったか", price: 980, url: "https://search.rakuten.co.jp/search/mall/%E3%82%AB%E3%82%A4%E3%83%AD+%E8%B2%BC%E3%82%8B/", imageUrl: "/static/placeholder.jpg", reviewCount: 5670, rating: 4.6, category: "冬グッズ" },
-  
-  // プレゼント1000円台（カスタム検索用）
-  { name: "入浴剤 ギフトセット 10種類 プレゼント", price: 1480, url: "https://search.rakuten.co.jp/search/mall/%E5%85%A5%E6%B5%B4%E5%89%A4+%E3%82%AE%E3%83%95%E3%83%88/", imageUrl: "/static/placeholder.jpg", reviewCount: 3890, rating: 4.6, category: "ギフト" },
-  { name: "ハンドクリーム ギフト 3本セット プレゼント", price: 1680, url: "https://search.rakuten.co.jp/search/mall/%E3%83%8F%E3%83%B3%E3%83%89%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%A0+%E3%82%AE%E3%83%95%E3%83%88/", imageUrl: "/static/placeholder.jpg", reviewCount: 4120, rating: 4.7, category: "ギフト" },
-  { name: "紅茶 ギフトセット 5種類 プレゼント", price: 1980, url: "https://search.rakuten.co.jp/search/mall/%E7%B4%85%E8%8C%B6+%E3%82%AE%E3%83%95%E3%83%88/", imageUrl: "/static/placeholder.jpg", reviewCount: 2560, rating: 4.5, category: "ギフト" }
-]
-
-// カテゴリ別商品データ（既存のカテゴリボタン用）
-const demoProducts: Record<string, Product[]> = {
-  cleaning: allDemoProducts.filter(p => p.category === "掃除グッズ"),
-  outdoor: allDemoProducts.filter(p => p.category === "アウトドア"),
-  diy: allDemoProducts.filter(p => p.category === "DIYグッズ"),
-  car: allDemoProducts.filter(p => p.category === "自動車関連")
-}
-
-// API: カテゴリ別商品取得（楽天API優先、デモデータはフォールバック）
-app.get('/api/products/:category', async (c) => {
-  const category = c.req.param('category')
-  
-  let products: Product[] = []
-  
-  // 楽天APIを優先的に使用
-  const { RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID } = c.env || {}
-  
-  if (RAKUTEN_APP_ID && RAKUTEN_ACCESS_KEY && RAKUTEN_AFFILIATE_ID) {
-    const keywords = categoryKeywords[category]
-    if (keywords) {
-      const keyword = keywords[Math.floor(Math.random() * keywords.length)]
-      
-      try {
-        console.log(`楽天API呼び出し: category=${category}, keyword=${keyword}`)
-        const apiProducts = await searchRakutenProducts(
-          keyword,
-          RAKUTEN_APP_ID,
-          RAKUTEN_ACCESS_KEY,
-          RAKUTEN_AFFILIATE_ID,
-          10
-        )
-        
-        if (apiProducts.length > 0) {
-          console.log(`楽天APIから${apiProducts.length}件取得成功`)
-          products = apiProducts
-        } else {
-          console.log('楽天APIから商品が取得できませんでした。デモデータを使用します。')
-          products = demoProducts[category] || []
-        }
-      } catch (error) {
-        console.error('楽天API呼び出しエラー:', error)
-        // デモデータにフォールバック
-        products = demoProducts[category] || []
-      }
-    }
-  } else {
-    console.log('楽天APIキーが未設定です。デモデータを使用します。')
-    // デモデータを使用
-    products = demoProducts[category] || []
-  }
-
-  // カテゴリ名を設定
-  const categoryName = categoryNames[category] || 'おすすめ商品'
-  const productsWithCategory = products.map(p => ({
-    ...p,
-    category: categoryName
-  }))
-
-  const productsWithDescriptions = productsWithCategory.map(product => ({
-    ...product,
-    description: generateDescription(product),
-    reason: `${product.reviewCount}件以上のレビューで評価${product.rating}を獲得。口コミで広がる実力派商品です。`
-  }))
-  
-  return c.json(productsWithDescriptions)
-})
-
-// API: カスタムキーワード検索（楽天API優先）
-app.get('/api/products/search/:keyword', async (c) => {
-  const keyword = decodeURIComponent(c.req.param('keyword'))
-  
-  let selectedProducts: Product[] = []
-  
-  // 楽天APIを優先的に使用
-  const { RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID } = c.env || {}
-  
-  if (RAKUTEN_APP_ID && RAKUTEN_ACCESS_KEY && RAKUTEN_AFFILIATE_ID) {
-    try {
-      console.log(`楽天API呼び出し: keyword=${keyword}`)
-      const products = await searchRakutenProducts(
-        keyword,
-        RAKUTEN_APP_ID,
-        RAKUTEN_ACCESS_KEY,
-        RAKUTEN_AFFILIATE_ID,
-        10
-      )
-      
-      if (products.length > 0) {
-        console.log(`楽天APIから${products.length}件取得成功`)
-        selectedProducts = products
-      } else {
-        console.log('楽天APIから商品が取得できませんでした。デモデータを使用します。')
-      }
-    } catch (error) {
-      console.error('楽天API呼び出しエラー:', error)
-    }
-  }
-  
-  // 楽天APIで取得できなかった場合、デモデータから検索
-  if (selectedProducts.length === 0) {
-    const keywordLower = keyword.toLowerCase()
-    
-    // デモデータからキーワードに合った商品を検索
-    selectedProducts = allDemoProducts.filter(product => {
-      const searchText = `${product.name} ${product.category}`.toLowerCase()
-      // キーワードをスペースで分割して、すべてのキーワードが含まれているかチェック
-      const keywords = keywordLower.split(/\s+/)
-      return keywords.every(kw => searchText.includes(kw))
-    })
-    
-    // マッチした商品がない場合は、部分一致で検索
-    if (selectedProducts.length === 0) {
-      selectedProducts = allDemoProducts.filter(product => {
-        const searchText = `${product.name} ${product.category}`.toLowerCase()
-        const keywords = keywordLower.split(/\s+/)
-        return keywords.some(kw => searchText.includes(kw))
-      })
-    }
-    
-    // それでもマッチしない場合は、ランダムに10商品を返す
-    if (selectedProducts.length === 0) {
-      selectedProducts = [...allDemoProducts]
-        .sort(() => 0.5 - Math.random())
-        .slice(0, 10)
-    } else {
-      // マッチした商品から最大10商品を選択
-      selectedProducts = selectedProducts.slice(0, 10)
-    }
-  }
-
-  const productsWithDescriptions = selectedProducts.map(product => ({
-    ...product,
-    description: generateDescription(product),
-    reason: `「${keyword}」で検索した結果、${product.reviewCount}件以上のレビューで評価${product.rating}を獲得している人気商品です。`
-  }))
-  
-  return c.json(productsWithDescriptions)
-})
-
-// API: ランダムに10商品取得（デモデータ優先）
-app.get('/api/products/random/10', async (c) => {
-  // 全デモ商品からランダムに10商品を選択
-  let selectedProducts = [...allDemoProducts]
-    .sort(() => 0.5 - Math.random())
-    .slice(0, 10)
-  
-  // 楽天APIを試行（オプション）
-  const { RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID } = c.env || {}
-  
-  if (RAKUTEN_APP_ID && RAKUTEN_ACCESS_KEY && RAKUTEN_AFFILIATE_ID) {
-    try {
-      const allKeywords = Object.values(categoryKeywords).flat()
-      const selectedKeywords = [...allKeywords]
-        .sort(() => 0.5 - Math.random())
-        .slice(0, 3)
-      
-      const allProducts: Product[] = []
-      
-      for (const keyword of selectedKeywords) {
-        const products = await searchRakutenProducts(
-          keyword,
-          RAKUTEN_APP_ID,
-          RAKUTEN_ACCESS_KEY,
-          RAKUTEN_AFFILIATE_ID,
-          4
-        )
-        allProducts.push(...products)
-      }
-
-      if (allProducts.length > 0) {
-        selectedProducts = allProducts
-          .sort(() => 0.5 - Math.random())
-          .slice(0, 10)
-      }
-    } catch (error) {
-      console.error('楽天API呼び出しエラー:', error)
-      // デモデータにフォールバック
-    }
-  }
-
-  const productsWithDescriptions = selectedProducts.map(product => ({
-    ...product,
-    description: generateDescription(product),
-    reason: `${product.reviewCount}件以上のレビューで評価${product.rating}を獲得。楽天市場で人気急上昇中の注目商品です。`
-  }))
-  
-  return c.json(productsWithDescriptions)
-})
-
-// メインページ（HTMLは変更なし）
+// メインページ
 app.get('/', (c) => {
   return c.html(`
     <!DOCTYPE html>
@@ -508,7 +50,7 @@ app.get('/', (c) => {
           .copy-btn:active {
             transform: scale(0.95);
           }
-          .loading {
+          .loading-spinner {
             display: inline-block;
             width: 20px;
             height: 20px;
@@ -521,6 +63,14 @@ app.get('/', (c) => {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
           }
+          .api-status {
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: bold;
+          }
+          .api-live { background-color: #d1fae5; color: #065f46; }
+          .api-demo { background-color: #fef3c7; color: #92400e; }
         </style>
     </head>
     <body class="bg-gradient-to-br from-pink-50 to-purple-50 min-h-screen">
@@ -534,13 +84,13 @@ app.get('/', (c) => {
                 <p class="text-gray-600 text-lg">
                     今日売れてる商品を見つけて、魅力的な紹介文で収益アップ！✨
                 </p>
-                <div class="mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg inline-block">
-                    <i class="fas fa-check-circle mr-2"></i>
-                    楽天市場APIと連携済み - リアルタイムで売れ筋商品を取得中！
+                <div class="mt-4">
+                    <span id="apiStatus" class="api-status api-demo">確認中...</span>
                 </div>
+                <p class="text-sm text-gray-500 mt-1" id="apiNote">APIステータスを確認中...</p>
             </div>
 
-            <!-- リクエスト欄（新機能） -->
+            <!-- リクエスト欄 -->
             <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">
                     <i class="fas fa-magic mr-2 text-purple-600"></i>
@@ -619,221 +169,542 @@ app.get('/', (c) => {
 
             <!-- ローディング -->
             <div id="loading" class="hidden text-center py-12">
-                <div class="loading mx-auto mb-4"></div>
+                <div class="loading-spinner mx-auto mb-4"></div>
                 <p class="text-gray-600">楽天市場から売れ筋商品をリサーチ中...</p>
             </div>
         </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/rakuten-api.js"></script>
         <script>
+            // ===== APIキー情報（/api/configから取得） =====
+            let apiConfig = {
+                rakutenAppId: '',
+                rakutenAccessKey: '',
+                rakutenAffiliateId: '',
+                hasApiKeys: false
+            };
+
             let currentProducts = [];
             const HISTORY_KEY = 'rakuten_room_history';
 
-            // 履歴を取得
+            // ===== キャッチーなフック =====
+            const catchyHooks = [
+                "他人への愛情よりも自分へのご褒美が優先だよね！",
+                "いつまでそれで勝負するつもり？早く買い換えて暖かさを味方にしようよ！",
+                "まだ我慢してるの？人生は一度きりだよ！",
+                "その悩み、この商品で一発解決できるかも！",
+                "知らないと損！みんなが黙って買ってる理由がこれ！",
+                "え、まだ使ってないの？人生損してるかも！",
+                "今年こそ変わりたいなら、これが答えかも！",
+                "ズボラさんでも続けられる秘密、教えます！",
+                "コスパ最強すぎて笑えてくる！",
+                "一度使ったら戻れない、そんな魔法のアイテム！",
+                "SNSで話題沸騰！売り切れる前にゲットしよ！",
+                "こんなに便利なのに、なんで今まで知らなかったの？",
+                "プロも愛用してる理由、わかっちゃった！",
+                "もう我慢しなくていいんだよ、自分を甘やかそう！",
+                "これがあれば毎日がもっと楽しくなる予感！"
+            ];
+
+            const emojiList = ["✨", "💡", "🎯", "👏", "🔥", "💪", "🌟", "❤️", "😊", "🎉", "⭐", "👍", "💖", "🙌", "😍", "🍫", "👖", "🎁"];
+
+            // ===== 商品別の具体的な特徴マッピング =====
+            const productFeatures = {
+                "ボールペン": ["10色のパステルカラーでノートを可愛く彩れる", "書き心地なめらかで手が疲れない", "インクがかすれずスムーズに書ける"],
+                "付箋": ["動物デザインが可愛くて癒される", "粘着力がちょうどよく、剥がしやすい", "8種類あるから使い分けが楽しい"],
+                "マスキングテープ": ["24巻セットでデコレーションし放題", "手帳やノートを華やかに演出できる", "貼って剥がせるから失敗しても安心"],
+                "手帳": ["B6サイズで持ち運びやすい", "月間・週間ページが充実していて使いやすい", "可愛いデザインで毎日開くのが楽しみになる"],
+                "シャープペンシル": ["0.5mmで細かい文字も書きやすい", "握りやすいグリップで長時間使っても疲れない", "可愛いデザインでテンションが上がる"],
+                "裏起毛パンツ": ["ストレッチが効いて動きやすい", "裏は毛布みたいにもこもこで暖かい", "見た目はスッキリなのに防寒性抜群"],
+                "電気毛布": ["USB給電だからどこでも使える", "膝掛けサイズでオフィスでも便利", "3段階温度調節で自分好みの暖かさに"],
+                "ルームソックス": ["もこもこ素材で足元ぽかぽか", "滑り止め付きで安全", "洗濯機で丸洗いOKでお手入れ簡単"],
+                "カイロ": ["貼るタイプで服に固定できる", "8時間以上持続する暖かさ", "30個入りで冬中使える大容量"],
+                "激落ちくん": ["水だけで汚れが落ちる、洗剤不要のエコ掃除", "100個入りの大容量でコスパ最強", "キッチン、お風呂、窓ガラスなど万能に使える"],
+                "マイクロファイバー": ["20枚セットで使い分けできる", "吸水性抜群で拭き掃除が楽ちん", "洗って繰り返し使えて経済的"],
+                "ドライブレコーダー": ["前後カメラで死角なし、万が一の事故も安心", "フルHD画質でナンバーもくっきり録画", "駐車監視機能付きで当て逃げ対策も完璧"],
+                "折りたたみチェア": ["超軽量で持ち運びが楽々", "ワンタッチで設営・収納が簡単", "コンパクトに折りたためて車のトランクにもすっぽり"],
+                "キャンプテーブル": ["ワンタッチで設営完了、組み立て不要", "コンパクト収納で持ち運びに便利", "安定感抜群で揺れない"],
+                "LEDランタン": ["USB充電式で電池不要", "防水設計でアウトドアでも安心", "明るさ調整できて使い勝手抜群"],
+                "電動ドライバー": ["充電式でコードレス、どこでも使える", "トルク調整機能付きで木材もネジも楽々", "初心者でも簡単に使えるシンプル設計"],
+                "収納棚": ["組み立て簡単、工具不要", "5段あるから収納力抜群", "シンプルデザインでどんな部屋にも馴染む"],
+                "工具セット": ["100点セットで家庭の修理に十分", "収納ケース付きで整理しやすい", "初心者でも使いやすい基本工具が揃ってる"],
+                "車載掃除機": ["コードレスで車内掃除が楽々", "コンパクトで収納に困らない", "吸引力が強くて細かいゴミもしっかり吸う"],
+                "車載スマホホルダー": ["マグネット式でワンタッチ装着", "360度回転で角度調整自由", "振動に強くてスマホが落ちない"],
+                "入浴剤": ["10種類の香りが楽しめる", "ギフトボックス入りでプレゼントに最適", "保湿成分配合で肌がしっとり"],
+                "ハンドクリーム": ["3本セットで使い分けできる", "べたつかないのにしっとり潤う", "持ち運びやすいサイズでギフトにも◎"],
+                "紅茶": ["5種類のフレーバーが楽しめる", "ティーバッグで手軽に淹れられる", "ギフトボックス入りで見た目も華やか"],
+                "default": ["実際に使った人からの満足度が高い", "コスパが良くて長く使える", "初心者でも使いやすい設計"]
+            };
+
+            // ===== カテゴリ別の検索キーワード =====
+            const categoryKeywords = {
+                cleaning: ["掃除用具", "クリーナー", "モップ", "ほうき", "雑巾", "洗剤", "メラミンスポンジ", "掃除機", "フローリング", "お風呂掃除"],
+                outdoor: ["キャンプ", "アウトドア", "テント", "チェア", "テーブル", "BBQ", "バーベキュー", "寝袋", "ランタン", "クーラーボックス"],
+                diy: ["工具", "DIY", "電動ドライバー", "のこぎり", "ハンマー", "棚", "収納", "組み立て", "ドリル", "ネジ"],
+                car: ["カー用品", "車載", "ドライブレコーダー", "カーナビ", "シートカバー", "掃除機", "カーアクセサリー", "芳香剤", "タイヤ", "洗車"]
+            };
+
+            const categoryNames = {
+                cleaning: '掃除グッズ',
+                outdoor: 'アウトドア',
+                diy: 'DIYグッズ',
+                car: '自動車関連'
+            };
+
+            // ===== デモ商品データ（フォールバック用） =====
+            const allDemoProducts = [
+                { name: "激落ちくん メラミンスポンジ 大容量100個入", price: 1280, url: "https://search.rakuten.co.jp/search/mall/%E6%BF%80%E8%90%BD%E3%81%A1%E3%81%8F%E3%82%93/", imageUrl: "/static/placeholder.jpg", reviewCount: 5430, rating: 4.6, category: "掃除グッズ" },
+                { name: "マイクロファイバー クロス 20枚セット", price: 1580, url: "https://search.rakuten.co.jp/search/mall/%E3%83%9E%E3%82%A4%E3%82%AF%E3%83%AD%E3%83%95%E3%82%A1%E3%82%A4%E3%83%90%E3%83%BC+%E3%82%AF%E3%83%AD%E3%82%B9/", imageUrl: "/static/placeholder.jpg", reviewCount: 3120, rating: 4.5, category: "掃除グッズ" },
+                { name: "お風呂掃除ブラシ 電動 充電式", price: 3280, url: "https://search.rakuten.co.jp/search/mall/%E3%81%8A%E9%A2%A8%E5%91%82%E6%8E%83%E9%99%A4%E3%83%96%E3%83%A9%E3%82%B7+%E9%9B%BB%E5%8B%95/", imageUrl: "/static/placeholder.jpg", reviewCount: 2890, rating: 4.4, category: "掃除グッズ" },
+                { name: "折りたたみチェア 超軽量 アウトドア", price: 2980, url: "https://search.rakuten.co.jp/search/mall/%E6%8A%98%E3%82%8A%E3%81%9F%E3%81%9F%E3%81%BF%E3%83%81%E3%82%A7%E3%82%A2+%E3%82%A2%E3%82%A6%E3%83%88%E3%83%89%E3%82%A2/", imageUrl: "/static/placeholder.jpg", reviewCount: 4200, rating: 4.7, category: "アウトドア" },
+                { name: "キャンプテーブル ワンタッチ設営 コンパクト収納", price: 5980, url: "https://search.rakuten.co.jp/search/mall/%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%97%E3%83%86%E3%83%BC%E3%83%96%E3%83%AB/", imageUrl: "/static/placeholder.jpg", reviewCount: 3200, rating: 4.7, category: "アウトドア" },
+                { name: "LEDランタン USB充電式 防水", price: 2480, url: "https://search.rakuten.co.jp/search/mall/LED%E3%83%A9%E3%83%B3%E3%82%BF%E3%83%B3+USB/", imageUrl: "/static/placeholder.jpg", reviewCount: 5100, rating: 4.6, category: "アウトドア" },
+                { name: "電動ドライバーセット 充電式 コードレス", price: 4980, url: "https://search.rakuten.co.jp/search/mall/%E9%9B%BB%E5%8B%95%E3%83%89%E3%83%A9%E3%82%A4%E3%83%90%E3%83%BC/", imageUrl: "/static/placeholder.jpg", reviewCount: 2890, rating: 4.5, category: "DIYグッズ" },
+                { name: "収納棚 組み立て簡単 5段ラック", price: 3580, url: "https://search.rakuten.co.jp/search/mall/%E5%8F%8E%E7%B4%8D%E6%A3%9A+5%E6%AE%B5/", imageUrl: "/static/placeholder.jpg", reviewCount: 1950, rating: 4.4, category: "DIYグッズ" },
+                { name: "工具セット 家庭用 100点セット", price: 3980, url: "https://search.rakuten.co.jp/search/mall/%E5%B7%A5%E5%85%B7%E3%82%BB%E3%83%83%E3%83%88/", imageUrl: "/static/placeholder.jpg", reviewCount: 3450, rating: 4.5, category: "DIYグッズ" },
+                { name: "ドライブレコーダー 前後カメラ フルHD", price: 6980, url: "https://search.rakuten.co.jp/search/mall/%E3%83%89%E3%83%A9%E3%82%A4%E3%83%96%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%80%E3%83%BC/", imageUrl: "/static/placeholder.jpg", reviewCount: 8540, rating: 4.6, category: "自動車関連" },
+                { name: "車載掃除機 コードレス ハンディクリーナー", price: 2780, url: "https://search.rakuten.co.jp/search/mall/%E8%BB%8A%E8%BC%89%E6%8E%83%E9%99%A4%E6%A9%9F/", imageUrl: "/static/placeholder.jpg", reviewCount: 3670, rating: 4.5, category: "自動車関連" },
+                { name: "車載スマホホルダー マグネット式", price: 1680, url: "https://search.rakuten.co.jp/search/mall/%E8%BB%8A%E8%BC%89%E3%82%B9%E3%83%9E%E3%83%9B%E3%83%9B%E3%83%AB%E3%83%80%E3%83%BC/", imageUrl: "/static/placeholder.jpg", reviewCount: 6230, rating: 4.6, category: "自動車関連" },
+                { name: "ボールペン 可愛い 10本セット パステルカラー", price: 1280, url: "https://search.rakuten.co.jp/search/mall/%E3%83%9C%E3%83%BC%E3%83%AB%E3%83%9A%E3%83%B3+%E5%8F%AF%E6%84%9B%E3%81%84+10%E6%9C%AC/", imageUrl: "/static/placeholder.jpg", reviewCount: 4560, rating: 4.7, category: "文房具" },
+                { name: "付箋 可愛い 動物デザイン 8種類セット", price: 980, url: "https://search.rakuten.co.jp/search/mall/%E4%BB%98%E7%AE%8B+%E5%8F%AF%E6%84%9B%E3%81%84+%E5%8B%95%E7%89%A9/", imageUrl: "/static/placeholder.jpg", reviewCount: 3890, rating: 4.6, category: "文房具" },
+                { name: "マスキングテープ 可愛い 24巻セット", price: 1580, url: "https://search.rakuten.co.jp/search/mall/%E3%83%9E%E3%82%B9%E3%82%AD%E3%83%B3%E3%82%B0%E3%83%86%E3%83%BC%E3%83%97+%E5%8F%AF%E6%84%9B%E3%81%84/", imageUrl: "/static/placeholder.jpg", reviewCount: 5120, rating: 4.8, category: "文房具" },
+                { name: "手帳 2024 可愛い B6サイズ", price: 1980, url: "https://search.rakuten.co.jp/search/mall/%E6%89%8B%E5%B8%B3+2024+%E5%8F%AF%E6%84%9B%E3%81%84/", imageUrl: "/static/placeholder.jpg", reviewCount: 2340, rating: 4.5, category: "文房具" },
+                { name: "シャープペンシル 可愛い 0.5mm 5本セット", price: 1480, url: "https://search.rakuten.co.jp/search/mall/%E3%82%B7%E3%83%A3%E3%83%BC%E3%83%97%E3%83%9A%E3%83%B3%E3%82%B7%E3%83%AB+%E5%8F%AF%E6%84%9B%E3%81%84/", imageUrl: "/static/placeholder.jpg", reviewCount: 3210, rating: 4.6, category: "文房具" },
+                { name: "裏起毛パンツ レディース 暖かい ストレッチ", price: 2380, url: "https://search.rakuten.co.jp/search/mall/%E8%A3%8F%E8%B5%B7%E6%AF%9B%E3%83%91%E3%83%B3%E3%83%84+%E3%83%AC%E3%83%87%E3%82%A3%E3%83%BC%E3%82%B9/", imageUrl: "/static/placeholder.jpg", reviewCount: 8970, rating: 4.7, category: "冬グッズ" },
+                { name: "電気毛布 USB 膝掛け あったか", price: 3280, url: "https://search.rakuten.co.jp/search/mall/%E9%9B%BB%E6%B0%97%E6%AF%9B%E5%B8%83+USB/", imageUrl: "/static/placeholder.jpg", reviewCount: 6540, rating: 4.6, category: "冬グッズ" },
+                { name: "ルームソックス もこもこ 暖かい", price: 1180, url: "https://search.rakuten.co.jp/search/mall/%E3%83%AB%E3%83%BC%E3%83%A0%E3%82%BD%E3%83%83%E3%82%AF%E3%82%B9+%E3%82%82%E3%81%93%E3%82%82%E3%81%93/", imageUrl: "/static/placeholder.jpg", reviewCount: 4230, rating: 4.5, category: "冬グッズ" },
+                { name: "カイロ 貼る 30個入 あったか", price: 980, url: "https://search.rakuten.co.jp/search/mall/%E3%82%AB%E3%82%A4%E3%83%AD+%E8%B2%BC%E3%82%8B/", imageUrl: "/static/placeholder.jpg", reviewCount: 5670, rating: 4.6, category: "冬グッズ" },
+                { name: "入浴剤 ギフトセット 10種類 プレゼント", price: 1480, url: "https://search.rakuten.co.jp/search/mall/%E5%85%A5%E6%B5%B4%E5%89%A4+%E3%82%AE%E3%83%95%E3%83%88/", imageUrl: "/static/placeholder.jpg", reviewCount: 3890, rating: 4.6, category: "ギフト" },
+                { name: "ハンドクリーム ギフト 3本セット プレゼント", price: 1680, url: "https://search.rakuten.co.jp/search/mall/%E3%83%8F%E3%83%B3%E3%83%89%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%A0+%E3%82%AE%E3%83%95%E3%83%88/", imageUrl: "/static/placeholder.jpg", reviewCount: 4120, rating: 4.7, category: "ギフト" },
+                { name: "紅茶 ギフトセット 5種類 プレゼント", price: 1980, url: "https://search.rakuten.co.jp/search/mall/%E7%B4%85%E8%8C%B6+%E3%82%AE%E3%83%95%E3%83%88/", imageUrl: "/static/placeholder.jpg", reviewCount: 2560, rating: 4.5, category: "ギフト" }
+            ];
+
+            // ========================================
+            // 楽天APIをブラウザから直接呼び出す関数
+            // （これが今回の修正の核心部分！）
+            // ========================================
+            async function callRakutenAPI(keyword, maxItems) {
+                maxItems = maxItems || 10;
+                
+                if (!apiConfig.hasApiKeys) {
+                    console.log('APIキー未設定、デモデータを使用');
+                    return null;
+                }
+
+                var params = new URLSearchParams({
+                    applicationId: apiConfig.rakutenAppId,
+                    accessKey: apiConfig.rakutenAccessKey,
+                    keyword: keyword,
+                    hits: String(maxItems),
+                    minPrice: '1000',
+                    maxPrice: '10000',
+                    sort: '-reviewCount',
+                    affiliateId: apiConfig.rakutenAffiliateId,
+                    format: 'json'
+                });
+
+                var url = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601?' + params.toString();
+                
+                console.log('楽天API直接呼び出し:', keyword, url);
+
+                // ★ ブラウザから直接fetch ★
+                // → Refererは自動的に https://rakuten-room-researcher.pages.dev/ になる！
+                // → これが楽天APIの許可サイトに登録済みなのでOK！
+                var response = await fetch(url);
+                
+                if (!response.ok) {
+                    var errorText = await response.text();
+                    console.error('楽天APIエラー:', response.status, errorText);
+                    throw new Error('楽天API error: ' + response.status);
+                }
+
+                var data = await response.json();
+                
+                if (!data.Items || data.Items.length === 0) {
+                    return [];
+                }
+
+                return data.Items.slice(0, maxItems).map(function(item) {
+                    return {
+                        name: item.Item.itemName,
+                        price: item.Item.itemPrice,
+                        url: item.Item.affiliateUrl || item.Item.itemUrl,
+                        imageUrl: (item.Item.mediumImageUrls && item.Item.mediumImageUrls[0]) 
+                            ? item.Item.mediumImageUrls[0].imageUrl 
+                            : '/static/placeholder.jpg',
+                        reviewCount: item.Item.reviewCount || 0,
+                        rating: item.Item.reviewAverage || 0,
+                        category: 'おすすめ商品',
+                        caption: item.Item.itemCaption || ''
+                    };
+                });
+            }
+
+            // ===== 紹介文生成関数 =====
+            function generateDescription(product) {
+                var hook = catchyHooks[Math.floor(Math.random() * catchyHooks.length)];
+                var selectedEmojis = [0,1,2].map(function() {
+                    return emojiList[Math.floor(Math.random() * emojiList.length)];
+                }).join('');
+                
+                var feature = '';
+                if (product.caption) {
+                    feature = product.caption.substring(0, 100).replace(/<[^>]*>/g, '').trim();
+                    if (!feature) feature = '実際に使った人からの満足度が高い商品です';
+                } else {
+                    var features = productFeatures['default'];
+                    for (var key in productFeatures) {
+                        if (key !== 'default' && product.name.indexOf(key) !== -1) {
+                            features = productFeatures[key];
+                            break;
+                        }
+                    }
+                    feature = features[Math.floor(Math.random() * features.length)];
+                }
+                
+                var reviews = [
+                    '「リピ確定」「もう手放せない」と絶賛されています',
+                    '「買ってよかった」「期待以上だった」という声が続出',
+                    '「もっと早く買えばよかった」「コスパ最強」と評判',
+                    '「これは買い」「間違いない商品」と口コミで高評価'
+                ];
+                var review = reviews[Math.floor(Math.random() * reviews.length)];
+                
+                var templates = [
+                    hook + ' ' + product.name + 'はいかがですか？' + selectedEmojis + ' ' + feature + 'で、実際に使った人からの満足度も抜群。楽天で' + product.reviewCount + '件以上のレビュー、評価' + product.rating + 'を獲得している実力派。' + review + '。売り切れる前にゲットしておきたい逸品です！',
+                    hook + ' そんなあなたにおすすめなのが「' + product.name + '」！' + selectedEmojis + ' ' + feature + 'という点が人気の理由。' + product.reviewCount + '件以上のレビューで評価' + product.rating + 'の高評価を獲得しています。' + review + '。' + product.price.toLocaleString() + '円でこのクオリティなら、間違いなく買いです！',
+                    hook + ' だからこそ「' + product.name + '」を試してほしい！' + selectedEmojis + ' ' + feature + 'から、リピーター続出の人気商品。' + review + '。楽天で' + product.reviewCount + '件以上のレビュー、評価' + product.rating + 'という実績が証明しています！'
+                ];
+                
+                return templates[Math.floor(Math.random() * templates.length)];
+            }
+
+            // ===== APIステータス表示更新 =====
+            function updateApiStatus(isLive) {
+                var statusEl = document.getElementById('apiStatus');
+                var noteEl = document.getElementById('apiNote');
+                if (isLive) {
+                    statusEl.className = 'api-status api-live';
+                    statusEl.textContent = '🟢 楽天API LIVE';
+                    noteEl.textContent = '楽天市場APIからリアルタイムで商品を取得中！';
+                } else {
+                    statusEl.className = 'api-status api-demo';
+                    statusEl.textContent = '📋 デモデータ';
+                    noteEl.textContent = 'デモ商品データを表示中（楽天APIに接続できない場合のフォールバック）';
+                }
+            }
+
+            // ===== 履歴管理 =====
             function getHistory() {
-                const history = localStorage.getItem(HISTORY_KEY);
+                var history = localStorage.getItem(HISTORY_KEY);
                 return history ? JSON.parse(history) : [];
             }
 
-            // 履歴に追加
             function addToHistory(productName) {
-                const history = getHistory();
-                if (!history.includes(productName)) {
+                var history = getHistory();
+                if (history.indexOf(productName) === -1) {
                     history.push(productName);
                     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
                 }
             }
 
-            // 商品が既に紹介済みかチェック
             function isAlreadyIntroduced(productName) {
-                return getHistory().includes(productName);
+                return getHistory().indexOf(productName) !== -1;
             }
 
-            // 履歴をクリア（デバッグ用）
             function clearHistory() {
                 localStorage.removeItem(HISTORY_KEY);
                 alert('✅ 履歴をクリアしました');
             }
 
+            // ========================================
+            // カテゴリ検索（★修正ポイント★）
+            // サーバー経由ではなくブラウザから直接楽天APIを呼ぶ
+            // ========================================
             async function searchProducts(category) {
-                const loading = document.getElementById('loading');
-                const results = document.getElementById('results');
-                const productList = document.getElementById('productList');
+                var loading = document.getElementById('loading');
+                var results = document.getElementById('results');
+                var productList = document.getElementById('productList');
 
                 loading.classList.remove('hidden');
                 results.classList.add('hidden');
                 productList.innerHTML = '';
 
+                var products = [];
+                var usedLiveAPI = false;
+
                 try {
-                    const endpoint = category === 'random' 
-                        ? '/api/products/random/10' 
-                        : \`/api/products/\${category}\`;
-                    
-                    const response = await axios.get(endpoint);
-                    
-                    // 未紹介の商品のみをフィルタリング
-                    const history = getHistory();
-                    currentProducts = response.data.filter(product => !history.includes(product.name));
-
-                    loading.classList.add('hidden');
-                    results.classList.remove('hidden');
-
-                    if (currentProducts.length === 0) {
-                        productList.innerHTML = '<p class="text-gray-500 text-center py-8">未紹介の商品が見つかりませんでした。<button onclick="clearHistory()" class="text-purple-600 underline ml-2">履歴をクリア</button></p>';
-                        return;
+                    if (category === 'random') {
+                        // ランダム：複数キーワードから取得
+                        var allKws = [];
+                        for (var cat in categoryKeywords) {
+                            allKws = allKws.concat(categoryKeywords[cat]);
+                        }
+                        // シャッフルして3つ選ぶ
+                        allKws.sort(function() { return 0.5 - Math.random(); });
+                        var selectedKws = allKws.slice(0, 3);
+                        
+                        for (var i = 0; i < selectedKws.length; i++) {
+                            try {
+                                var apiProducts = await callRakutenAPI(selectedKws[i], 4);
+                                if (apiProducts && apiProducts.length > 0) {
+                                    products = products.concat(apiProducts);
+                                    usedLiveAPI = true;
+                                }
+                            } catch (e) {
+                                console.error('ランダム検索エラー:', e);
+                            }
+                        }
+                        // シャッフルして10件に
+                        if (products.length > 0) {
+                            products.sort(function() { return 0.5 - Math.random(); });
+                            products = products.slice(0, 10);
+                        }
+                    } else {
+                        // カテゴリ検索
+                        var keywords = categoryKeywords[category];
+                        if (keywords) {
+                            var keyword = keywords[Math.floor(Math.random() * keywords.length)];
+                            var apiProducts = await callRakutenAPI(keyword, 10);
+                            if (apiProducts && apiProducts.length > 0) {
+                                products = apiProducts;
+                                usedLiveAPI = true;
+                            }
+                        }
                     }
-
-                    // 紹介済みとしてマーク
-                    currentProducts.forEach(product => addToHistory(product.name));
-
-                    currentProducts.forEach((product, index) => {
-                        const productCard = createProductCard(product, index);
-                        productList.innerHTML += productCard;
-                    });
                 } catch (error) {
-                    loading.classList.add('hidden');
-                    alert('エラーが発生しました: ' + error.message);
+                    console.error('楽天API呼び出しエラー:', error);
                 }
+
+                // APIで取得できなかった場合、デモデータにフォールバック
+                if (products.length === 0) {
+                    console.log('デモデータにフォールバック');
+                    if (category === 'random') {
+                        products = allDemoProducts.slice().sort(function() { return 0.5 - Math.random(); }).slice(0, 10);
+                    } else {
+                        var catName = categoryNames[category] || '';
+                        products = allDemoProducts.filter(function(p) { return p.category === catName; });
+                    }
+                }
+
+                // ステータス更新
+                updateApiStatus(usedLiveAPI);
+
+                // カテゴリ名を設定
+                var displayCatName = categoryNames[category] || 'おすすめ商品';
+
+                // 未紹介の商品のみをフィルタリング
+                var history = getHistory();
+                var filteredProducts = products.filter(function(p) { return history.indexOf(p.name) === -1; });
+
+                // 紹介文を生成
+                currentProducts = filteredProducts.map(function(p) {
+                    return {
+                        name: p.name,
+                        price: p.price,
+                        url: p.url,
+                        imageUrl: p.imageUrl,
+                        reviewCount: p.reviewCount,
+                        rating: p.rating,
+                        category: displayCatName,
+                        caption: p.caption || '',
+                        description: generateDescription(p),
+                        reason: p.reviewCount + '件以上のレビューで評価' + p.rating + 'を獲得。口コミで広がる実力派商品です。'
+                    };
+                });
+
+                // 紹介済みとしてマーク
+                currentProducts.forEach(function(p) { addToHistory(p.name); });
+
+                loading.classList.add('hidden');
+                results.classList.remove('hidden');
+
+                if (currentProducts.length === 0) {
+                    productList.innerHTML = '<p class="text-gray-500 text-center py-8">未紹介の商品が見つかりませんでした。<button onclick="clearHistory()" class="text-purple-600 underline ml-2">履歴をクリア</button></p>';
+                    return;
+                }
+
+                currentProducts.forEach(function(product, index) {
+                    productList.innerHTML += createProductCard(product, index);
+                });
             }
 
-            // カスタムキーワード検索
+            // ========================================
+            // カスタムキーワード検索（★修正ポイント★）
+            // サーバー経由ではなくブラウザから直接楽天APIを呼ぶ
+            // ========================================
             async function searchCustom() {
-                const keyword = document.getElementById('customKeyword').value.trim();
+                var keyword = document.getElementById('customKeyword').value.trim();
                 
                 if (!keyword) {
                     alert('キーワードを入力してください');
                     return;
                 }
 
-                const loading = document.getElementById('loading');
-                const results = document.getElementById('results');
-                const productList = document.getElementById('productList');
+                var loading = document.getElementById('loading');
+                var results = document.getElementById('results');
+                var productList = document.getElementById('productList');
 
                 loading.classList.remove('hidden');
                 results.classList.add('hidden');
                 productList.innerHTML = '';
 
+                var products = [];
+                var usedLiveAPI = false;
+
                 try {
-                    const response = await axios.get(\`/api/products/search/\${encodeURIComponent(keyword)}\`);
-                    
-                    // 未紹介の商品のみをフィルタリング
-                    const history = getHistory();
-                    currentProducts = response.data.filter(product => !history.includes(product.name));
-
-                    loading.classList.add('hidden');
-                    results.classList.remove('hidden');
-
-                    if (currentProducts.length === 0) {
-                        productList.innerHTML = '<p class="text-gray-500 text-center py-8">「' + keyword + '」で未紹介の商品が見つかりませんでした。<button onclick="clearHistory()" class="text-purple-600 underline ml-2">履歴をクリア</button></p>';
-                        return;
+                    var apiProducts = await callRakutenAPI(keyword, 10);
+                    if (apiProducts && apiProducts.length > 0) {
+                        products = apiProducts;
+                        usedLiveAPI = true;
                     }
+                } catch (error) {
+                    console.error('楽天API呼び出しエラー:', error);
+                }
 
-                    // 紹介済みとしてマーク
-                    currentProducts.forEach(product => addToHistory(product.name));
-
-                    currentProducts.forEach((product, index) => {
-                        const productCard = createProductCard(product, index);
-                        productList.innerHTML += productCard;
+                // APIで取得できなかった場合、デモデータにフォールバック
+                if (products.length === 0) {
+                    console.log('デモデータにフォールバック');
+                    var keywordLower = keyword.toLowerCase();
+                    
+                    // 全マッチ
+                    products = allDemoProducts.filter(function(p) {
+                        var searchText = (p.name + ' ' + p.category).toLowerCase();
+                        var kws = keywordLower.split(/\\s+/);
+                        return kws.every(function(kw) { return searchText.indexOf(kw) !== -1; });
                     });
 
-                    // 検索欄をクリア
-                    document.getElementById('customKeyword').value = '';
-                } catch (error) {
-                    loading.classList.add('hidden');
-                    alert('エラーが発生しました: ' + error.message);
+                    // 部分マッチ
+                    if (products.length === 0) {
+                        products = allDemoProducts.filter(function(p) {
+                            var searchText = (p.name + ' ' + p.category).toLowerCase();
+                            var kws = keywordLower.split(/\\s+/);
+                            return kws.some(function(kw) { return searchText.indexOf(kw) !== -1; });
+                        });
+                    }
+
+                    // ランダム
+                    if (products.length === 0) {
+                        products = allDemoProducts.slice().sort(function() { return 0.5 - Math.random(); }).slice(0, 10);
+                    } else {
+                        products = products.slice(0, 10);
+                    }
                 }
+
+                // ステータス更新
+                updateApiStatus(usedLiveAPI);
+
+                // 未紹介の商品のみをフィルタリング
+                var history = getHistory();
+                var filteredProducts = products.filter(function(p) { return history.indexOf(p.name) === -1; });
+
+                // 紹介文を生成
+                currentProducts = filteredProducts.map(function(p) {
+                    return {
+                        name: p.name,
+                        price: p.price,
+                        url: p.url,
+                        imageUrl: p.imageUrl,
+                        reviewCount: p.reviewCount,
+                        rating: p.rating,
+                        category: p.category || 'カスタム検索',
+                        caption: p.caption || '',
+                        description: generateDescription(p),
+                        reason: '「' + keyword + '」で検索した結果、' + p.reviewCount + '件以上のレビューで評価' + p.rating + 'を獲得している人気商品です。'
+                    };
+                });
+
+                // 紹介済みとしてマーク
+                currentProducts.forEach(function(p) { addToHistory(p.name); });
+
+                loading.classList.add('hidden');
+                results.classList.remove('hidden');
+
+                if (currentProducts.length === 0) {
+                    productList.innerHTML = '<p class="text-gray-500 text-center py-8">「' + keyword + '」で未紹介の商品が見つかりませんでした。<button onclick="clearHistory()" class="text-purple-600 underline ml-2">履歴をクリア</button></p>';
+                    return;
+                }
+
+                currentProducts.forEach(function(product, index) {
+                    productList.innerHTML += createProductCard(product, index);
+                });
+
+                document.getElementById('customKeyword').value = '';
             }
 
+            // ===== 商品カード生成 =====
             function createProductCard(product, index) {
-                return \`
-                    <div class="product-card border border-gray-200 rounded-xl p-6 bg-gradient-to-br from-white to-gray-50">
-                        <div class="flex items-start justify-between mb-4">
-                            <div class="flex-1">
-                                <div class="flex items-center mb-2">
-                                    <span class="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-bold mr-2">
-                                        #\${index + 1}
-                                    </span>
-                                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                                        \${product.category}
-                                    </span>
-                                </div>
-                                <h3 class="text-xl font-bold text-gray-800 mb-2">
-                                    \${product.name}
-                                </h3>
-                                <div class="flex items-center space-x-4 text-sm text-gray-600 mb-2">
-                                    <span class="font-bold text-2xl text-red-600">
-                                        ¥\${product.price.toLocaleString()}
-                                    </span>
-                                    <span>
-                                        <i class="fas fa-star text-yellow-500"></i>
-                                        \${product.rating}
-                                    </span>
-                                    <span>
-                                        <i class="fas fa-comment text-gray-400"></i>
-                                        \${product.reviewCount}件
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                            <p class="text-sm font-bold text-yellow-800 mb-1">
-                                <i class="fas fa-lightbulb mr-1"></i>
-                                なぜ売れているか
-                            </p>
-                            <p class="text-sm text-gray-700">\${product.reason}</p>
-                        </div>
-
-                        <div class="bg-purple-50 border-l-4 border-purple-400 p-4 mb-4">
-                            <div class="flex justify-between items-center mb-2">
-                                <p class="text-sm font-bold text-purple-800">
-                                    <i class="fas fa-pen-fancy mr-1"></i>
-                                    楽天ROOM用紹介文
-                                </p>
-                                <span class="text-xs text-gray-500">
-                                    \${product.description.length}文字
-                                </span>
-                            </div>
-                            <p class="text-sm text-gray-700 leading-relaxed mb-3" id="description-\${index}">
-                                \${product.description}
-                            </p>
-                            <button onclick="copyDescription(\${index})" 
-                                    class="copy-btn w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition">
-                                <i class="fas fa-copy mr-2"></i>
-                                この紹介文をコピー
-                            </button>
-                        </div>
-
-                        <a href="\${product.url}" target="_blank" 
-                           class="block w-full bg-red-600 text-white text-center py-3 rounded-lg hover:bg-red-700 transition">
-                            <i class="fas fa-external-link-alt mr-2"></i>
-                            楽天市場で見る
-                        </a>
-                    </div>
-                \`;
+                return '<div class="product-card border border-gray-200 rounded-xl p-6 bg-gradient-to-br from-white to-gray-50">' +
+                    '<div class="flex items-start justify-between mb-4">' +
+                        '<div class="flex-1">' +
+                            '<div class="flex items-center mb-2">' +
+                                '<span class="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-bold mr-2">#' + (index + 1) + '</span>' +
+                                '<span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">' + product.category + '</span>' +
+                            '</div>' +
+                            '<h3 class="text-xl font-bold text-gray-800 mb-2">' + product.name + '</h3>' +
+                            '<div class="flex items-center space-x-4 text-sm text-gray-600 mb-2">' +
+                                '<span class="font-bold text-2xl text-red-600">¥' + product.price.toLocaleString() + '</span>' +
+                                '<span><i class="fas fa-star text-yellow-500"></i> ' + product.rating + '</span>' +
+                                '<span><i class="fas fa-comment text-gray-400"></i> ' + product.reviewCount + '件</span>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">' +
+                        '<p class="text-sm font-bold text-yellow-800 mb-1"><i class="fas fa-lightbulb mr-1"></i>なぜ売れているか</p>' +
+                        '<p class="text-sm text-gray-700">' + product.reason + '</p>' +
+                    '</div>' +
+                    '<div class="bg-purple-50 border-l-4 border-purple-400 p-4 mb-4">' +
+                        '<div class="flex justify-between items-center mb-2">' +
+                            '<p class="text-sm font-bold text-purple-800"><i class="fas fa-pen-fancy mr-1"></i>楽天ROOM用紹介文</p>' +
+                            '<span class="text-xs text-gray-500">' + product.description.length + '文字</span>' +
+                        '</div>' +
+                        '<p class="text-sm text-gray-700 leading-relaxed mb-3" id="description-' + index + '">' + product.description + '</p>' +
+                        '<button onclick="copyDescription(' + index + ')" class="copy-btn w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition"><i class="fas fa-copy mr-2"></i>この紹介文をコピー</button>' +
+                    '</div>' +
+                    '<a href="' + product.url + '" target="_blank" class="block w-full bg-red-600 text-white text-center py-3 rounded-lg hover:bg-red-700 transition"><i class="fas fa-external-link-alt mr-2"></i>楽天市場で見る</a>' +
+                '</div>';
             }
 
+            // ===== コピー機能 =====
             function copyDescription(index) {
-                const description = currentProducts[index].description;
-                navigator.clipboard.writeText(description).then(() => {
+                var description = currentProducts[index].description;
+                navigator.clipboard.writeText(description).then(function() {
                     alert('✅ 紹介文をコピーしました！');
-                }).catch(err => {
+                }).catch(function(err) {
                     alert('コピーに失敗しました: ' + err);
                 });
             }
 
             function copyAllDescriptions() {
-                const allDescriptions = currentProducts
-                    .map((p, i) => \`[\${i + 1}] \${p.name}\\n\${p.description}\\n\${p.url}\\n\`)
-                    .join('\\n---\\n\\n');
+                var allDescriptions = currentProducts.map(function(p, i) {
+                    return '[' + (i + 1) + '] ' + p.name + '\\n' + p.description + '\\n' + p.url + '\\n';
+                }).join('\\n---\\n\\n');
                 
-                navigator.clipboard.writeText(allDescriptions).then(() => {
+                navigator.clipboard.writeText(allDescriptions).then(function() {
                     alert('✅ 全ての紹介文をコピーしました！');
-                }).catch(err => {
+                }).catch(function(err) {
                     alert('コピーに失敗しました: ' + err);
                 });
             }
+
+            // ===== ページ読み込み時: APIキーを取得 =====
+            document.addEventListener('DOMContentLoaded', async function() {
+                try {
+                    var res = await fetch('/api/config');
+                    apiConfig = await res.json();
+                    
+                    if (apiConfig.hasApiKeys) {
+                        console.log('APIキー取得成功！楽天API直接呼び出しモードで起動');
+                        updateApiStatus(true);
+                        document.getElementById('apiNote').textContent = '楽天市場APIと連携済み - カテゴリまたはキーワードで検索してください！';
+                    } else {
+                        console.log('APIキー未設定、デモモードで起動');
+                        updateApiStatus(false);
+                    }
+                } catch (e) {
+                    console.error('config取得エラー:', e);
+                    updateApiStatus(false);
+                }
+            });
         </script>
     </body>
     </html>
