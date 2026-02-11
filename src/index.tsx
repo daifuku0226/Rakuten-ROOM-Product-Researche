@@ -22,6 +22,8 @@ interface Product {
   reviewCount: number
   rating: number
   category: string
+  description?: string  // 商品説明を追加
+  caption?: string  // APIから取得した商品キャプション
 }
 
 // 楽天市場APIレスポンスの型定義 (旧バージョン)
@@ -36,6 +38,7 @@ interface RakutenItem {
     genreId: string
     shopName: string
     affiliateUrl?: string
+    itemCaption?: string  // 商品説明文を追加
   }
 }
 
@@ -108,23 +111,39 @@ const productFeatures: Record<string, string[]> = {
   "default": ["実際に使った人からの満足度が高い", "コスパが良くて長く使える", "初心者でも使いやすい設計"]
 }
 
-// 紹介文生成関数（商品の具体的な魅力を含む）
+// 商品説明から特徴を抽出する関数
+function extractFeatures(caption: string | undefined): string {
+  if (!caption) return "実際に使った人からの満足度が高い商品です"
+  
+  // キャプションから最初の100文字程度を抜粋（簡易版）
+  const shortCaption = caption.substring(0, 100).replace(/<[^>]*>/g, '').trim()
+  return shortCaption || "実際に使った人からの満足度が高い商品です"
+}
+
+// 紹介文生成関数（実際の商品説明を反映）
 function generateDescription(product: Product): string {
   const hook = catchyHooks[Math.floor(Math.random() * catchyHooks.length)]
   const selectedEmojis = [...Array(3)].map(() => 
     emojis[Math.floor(Math.random() * emojis.length)]
   ).join('')
   
-  // 商品名から具体的な特徴を取得
-  let features = productFeatures["default"]
-  for (const key in productFeatures) {
-    if (product.name.includes(key)) {
-      features = productFeatures[key]
-      break
-    }
-  }
+  // 実際の商品説明から特徴を抽出（APIデータ優先）
+  let feature: string
   
-  const feature = features[Math.floor(Math.random() * features.length)]
+  if (product.caption) {
+    // APIから取得した商品説明を使用
+    feature = extractFeatures(product.caption)
+  } else {
+    // フォールバック: 商品名から具体的な特徴を取得
+    let features = productFeatures["default"]
+    for (const key in productFeatures) {
+      if (product.name.includes(key)) {
+        features = productFeatures[key]
+        break
+      }
+    }
+    feature = features[Math.floor(Math.random() * features.length)]
+  }
   
   // 口コミ例
   const reviews = [
@@ -188,7 +207,8 @@ async function searchRakutenProducts(
       imageUrl: item.Item.mediumImageUrls?.[0]?.imageUrl || '/static/placeholder.jpg',
       reviewCount: item.Item.reviewCount || 0,
       rating: item.Item.reviewAverage || 0,
-      category: getCategoryName(item.Item.genreId)
+      category: getCategoryName(item.Item.genreId),
+      caption: item.Item.itemCaption  // 商品説明を保存
     }))
   } catch (error) {
     console.error('楽天API検索エラー:', error)
@@ -259,22 +279,22 @@ const demoProducts: Record<string, Product[]> = {
   car: allDemoProducts.filter(p => p.category === "自動車関連")
 }
 
-// API: カテゴリ別商品取得（デモデータ優先）
+// API: カテゴリ別商品取得（楽天API優先、デモデータはフォールバック）
 app.get('/api/products/:category', async (c) => {
   const category = c.req.param('category')
   
-  // デモデータを使用
-  let products = demoProducts[category] || []
+  let products: Product[] = []
   
-  // 楽天APIを試行（オプション）
+  // 楽天APIを優先的に使用
   const { RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID } = c.env || {}
   
-  if (RAKUTEN_APP_ID && RAKUTEN_ACCESS_KEY && RAKUTEN_AFFILIATE_ID && products.length === 0) {
+  if (RAKUTEN_APP_ID && RAKUTEN_ACCESS_KEY && RAKUTEN_AFFILIATE_ID) {
     const keywords = categoryKeywords[category]
     if (keywords) {
       const keyword = keywords[Math.floor(Math.random() * keywords.length)]
       
       try {
+        console.log(`楽天API呼び出し: category=${category}, keyword=${keyword}`)
         const apiProducts = await searchRakutenProducts(
           keyword,
           RAKUTEN_APP_ID,
@@ -284,13 +304,22 @@ app.get('/api/products/:category', async (c) => {
         )
         
         if (apiProducts.length > 0) {
+          console.log(`楽天APIから${apiProducts.length}件取得成功`)
           products = apiProducts
+        } else {
+          console.log('楽天APIから商品が取得できませんでした。デモデータを使用します。')
+          products = demoProducts[category] || []
         }
       } catch (error) {
         console.error('楽天API呼び出しエラー:', error)
         // デモデータにフォールバック
+        products = demoProducts[category] || []
       }
     }
+  } else {
+    console.log('楽天APIキーが未設定です。デモデータを使用します。')
+    // デモデータを使用
+    products = demoProducts[category] || []
   }
 
   // カテゴリ名を設定
@@ -309,42 +338,18 @@ app.get('/api/products/:category', async (c) => {
   return c.json(productsWithDescriptions)
 })
 
-// API: カスタムキーワード検索（リクエスト欄用）
+// API: カスタムキーワード検索（楽天API優先）
 app.get('/api/products/search/:keyword', async (c) => {
-  const keyword = decodeURIComponent(c.req.param('keyword')).toLowerCase()
+  const keyword = decodeURIComponent(c.req.param('keyword'))
   
-  // デモデータからキーワードに合った商品を検索
-  let selectedProducts = allDemoProducts.filter(product => {
-    const searchText = `${product.name} ${product.category}`.toLowerCase()
-    // キーワードをスペースで分割して、すべてのキーワードが含まれているかチェック
-    const keywords = keyword.split(/\s+/)
-    return keywords.every(kw => searchText.includes(kw))
-  })
+  let selectedProducts: Product[] = []
   
-  // マッチした商品がない場合は、部分一致で検索
-  if (selectedProducts.length === 0) {
-    selectedProducts = allDemoProducts.filter(product => {
-      const searchText = `${product.name} ${product.category}`.toLowerCase()
-      const keywords = keyword.split(/\s+/)
-      return keywords.some(kw => searchText.includes(kw))
-    })
-  }
-  
-  // それでもマッチしない場合は、ランダムに10商品を返す
-  if (selectedProducts.length === 0) {
-    selectedProducts = [...allDemoProducts]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 10)
-  } else {
-    // マッチした商品から最大10商品を選択
-    selectedProducts = selectedProducts.slice(0, 10)
-  }
-  
-  // 楽天APIを試行（オプション）
+  // 楽天APIを優先的に使用
   const { RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID } = c.env || {}
   
   if (RAKUTEN_APP_ID && RAKUTEN_ACCESS_KEY && RAKUTEN_AFFILIATE_ID) {
     try {
+      console.log(`楽天API呼び出し: keyword=${keyword}`)
       const products = await searchRakutenProducts(
         keyword,
         RAKUTEN_APP_ID,
@@ -354,11 +359,45 @@ app.get('/api/products/search/:keyword', async (c) => {
       )
       
       if (products.length > 0) {
+        console.log(`楽天APIから${products.length}件取得成功`)
         selectedProducts = products
+      } else {
+        console.log('楽天APIから商品が取得できませんでした。デモデータを使用します。')
       }
     } catch (error) {
       console.error('楽天API呼び出しエラー:', error)
-      // デモデータにフォールバック
+    }
+  }
+  
+  // 楽天APIで取得できなかった場合、デモデータから検索
+  if (selectedProducts.length === 0) {
+    const keywordLower = keyword.toLowerCase()
+    
+    // デモデータからキーワードに合った商品を検索
+    selectedProducts = allDemoProducts.filter(product => {
+      const searchText = `${product.name} ${product.category}`.toLowerCase()
+      // キーワードをスペースで分割して、すべてのキーワードが含まれているかチェック
+      const keywords = keywordLower.split(/\s+/)
+      return keywords.every(kw => searchText.includes(kw))
+    })
+    
+    // マッチした商品がない場合は、部分一致で検索
+    if (selectedProducts.length === 0) {
+      selectedProducts = allDemoProducts.filter(product => {
+        const searchText = `${product.name} ${product.category}`.toLowerCase()
+        const keywords = keywordLower.split(/\s+/)
+        return keywords.some(kw => searchText.includes(kw))
+      })
+    }
+    
+    // それでもマッチしない場合は、ランダムに10商品を返す
+    if (selectedProducts.length === 0) {
+      selectedProducts = [...allDemoProducts]
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 10)
+    } else {
+      // マッチした商品から最大10商品を選択
+      selectedProducts = selectedProducts.slice(0, 10)
     }
   }
 
