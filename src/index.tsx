@@ -178,6 +178,7 @@ async function searchRakutenProducts(
   try {
     const params = new URLSearchParams({
       applicationId: appId,
+      accessKey: accessKey,  // 新しいAPI仕様ではaccessKeyが必須
       keyword: keyword,
       hits: maxItems.toString(),
       minPrice: '1000',
@@ -186,8 +187,9 @@ async function searchRakutenProducts(
       affiliateId: affiliateId
     })
 
+    // 新しいエンドポイント（openapi.rakuten.co.jp）を使用
     const response = await fetch(
-      `https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706?${params.toString()}`,
+      `https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601?format=json&${params.toString()}`,
       {
         headers: {
           'Referer': 'https://rakuten-room-researcher.pages.dev/'
